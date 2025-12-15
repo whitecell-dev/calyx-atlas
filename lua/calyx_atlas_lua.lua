@@ -14,7 +14,7 @@ USAGE:
     # Then in ChatGPT/Claude: "Here's my bundled Lua project..."
 ]]
 
-local json = require("json") -- You might need to install a JSON library
+local json = require("dkjson") -- You might need to install a JSON library
 local lfs = require("lfs") -- LuaFileSystem for directory traversal
 local io = io
 local os = os
