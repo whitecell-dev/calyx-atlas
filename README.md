@@ -2,150 +2,126 @@
 
 **Lossless semantic serialization for LLM-assisted code reasoning.**
 
-CALYX Atlas converts real codebases into a **language-native, LLM-optimized intermediate representation** that preserves *structure, intent, and relationships* — not just source text.
-
-This is **not** a packaging tool.
-This is **an atlas of a codebase**: a structured map that allows humans and large language models to reason about systems without hallucinating, collapsing boundaries, or inventing architecture.
+> Turn a real codebase into an explicit architectural map that humans and LLMs can reason over **without hallucination**.
 
 ---
 
-## Why CALYX Atlas Exists
+## Why This Exists
 
-LLMs are extremely good at reasoning — **if the structure is explicit**.
+LLMs fail at code reasoning when structure is implicit:
 
-They fail when:
-
-* module boundaries are implicit
+* module boundaries are blurred
 * relationships must be inferred
-* semantics are scattered across execution glue
 * long files collapse attention locality
 
-Traditional “monolithic bundles” optimize for execution.
-**CALYX Atlas optimizes for cognition.**
+Traditional bundlers optimize for **execution**.
+CALYX Atlas optimizes for **cognition**.
 
-It preserves:
+It makes structure explicit so reasoning can happen **without guessing**.
+
+---
+
+## What CALYX Atlas Does
+
+CALYX Atlas converts a repository into a **language-native, lossless intermediate representation (IR)** that preserves:
 
 * module identity
-* dependency graphs
+* dependency relationships
 * architectural layers
-* docstrings and intent
+* verbatim source code
 * negative knowledge (what the system does *not* do)
 
-So models can reason *without guessing*.
+Nothing is executed.
+Nothing is reordered.
+Nothing is summarized.
 
 ---
 
-## What CALYX Atlas Is (and Is Not)
+## What You Actually Get
 
-### ✅ It *is*
+Given a codebase, CALYX Atlas produces:
 
-* A **lossless semantic transport format**
-* A **LLM-native intermediate representation (IR)**
-* A **reversible encoding** of a codebase
-* A way to safely move systems between humans and models
-* A foundation for AI-assisted refactoring, auditing, and extension
+* a **single language-native file** (`.py`, `.lua`, `.ts`)
+* containing explicit, declarative sections:
 
-### ❌ It is *not*
+  * metadata (version, timestamps, external deps)
+  * module map (name → path, layer, exports)
+  * dependency graph (explicit edges)
+  * preserved source (verbatim, lossless)
+  * a small query API for inspection
 
-* A build system
-* A deployment tool
-* A zip / pack / bundle utility
-* A runtime replacement
-* A code generator
+This file is designed for **reasoning**, not running.
 
 ---
 
-## Core Idea
+## What This Is *Not*
 
-> **Executable code is a poor reasoning surface.
-> Explicit semantic graphs are not.**
+* ❌ Not a bundler
+* ❌ Not a build system
+* ❌ Not a deployment tool
+* ❌ Not a runtime
+* ❌ Not a code generator
 
-CALYX Atlas turns a repo into **explicit data**:
+Traditional bundlers:
 
-* what modules exist
-* where they live
-* how they depend on each other
-* what they export
-* what layer they belong to
-* what external dependencies they require
-* their source, preserved verbatim
+* collapse files
+* erase boundaries
+* optimize for runtime
 
-This aligns with how transformers actually process information.
+CALYX Atlas:
+
+* preserves files
+* preserves boundaries
+* optimizes for understanding
 
 ---
 
-## Atlas Format (High Level)
+## Why This Works
 
-A CALYX Atlas file is a **single language-native file** containing clearly delimited, declarative sections:
+Transformers reason best over:
 
-* **Metadata** (format version, generation time, external deps)
-* **Module Map** (name → path, layer, exports)
-* **Dependency Graph** (explicit edges)
-* **Module Contents** (verbatim source, lossless)
-* **Public Query API** (for inspection)
-* **Optional Runtime Shim** (kept separate from reasoning surface)
+* explicit graphs
+* flat, addressable sections
+* bounded contexts
+* declarative relationships
 
-The format is:
+Executable code is a poor reasoning surface.
+Explicit structure is not.
 
-* flat
-* explicit
-* addressable
-* reversible
-* language-agnostic in concept
+CALYX Atlas reshapes code into the form **LLMs already reason well over**.
 
 ---
 
 ## Supported Languages
 
-### ✅ Python (available now)
+### ✅ Python (available)
 
-* Parses real Python modules
-* Preserves docstrings, imports, AST-level intent
+* Preserves real modules and docstrings
 * Builds explicit dependency graphs
 * Outputs a single `.py` Atlas file
 
 ### 🚧 Lua (in progress)
 
 * Designed for `require()`-based systems
-* Natural fit for table-driven Atlas structures
-* Ideal for CALYX FSM / runtime layers
+* Natural fit for table-driven runtimes
+* Ideal for FSM and embedded systems
 
 ### 🚧 TypeScript (planned)
 
-* Handles modern TS imports and project layouts
-* Exposes real dependency graphs (no barrel magic)
+* Handles modern TS/ESM imports
+* Exposes real dependency graphs
 * Stress-tests Atlas against high-entropy ecosystems
 
 ---
 
 ## Example Use Cases
 
-* Hand a complex system to an LLM **without hallucinations**
-* Ask “where should this change live?” and get a correct answer
+* Hand a large codebase to an LLM **without hallucinations**
+* Ask *“Where should this change live?”* and get a correct answer
 * Perform **surgical refactors** instead of global rewrites
-* Split monoliths *intentionally*, not heuristically
-* Audit responsibility boundaries (who does what)
-* Preserve architectural intent across time and models
-* Collaborate across multiple LLMs safely
-
----
-
-## Why This Works (Briefly)
-
-LLMs struggle with:
-
-* implicit structure
-* heuristic inference
-* long-range dependencies
-
-They excel at:
-
-* explicit graphs
-* named sections
-* declarative relationships
-* local reasoning over bounded contexts
-
-CALYX Atlas reshapes code into the form **models already reason well over**.
+* Audit responsibility boundaries (who owns what)
+* Understand legacy systems quickly and safely
+* Collaborate across multiple LLMs using a shared structure
 
 ---
 
@@ -162,7 +138,7 @@ CALYX Atlas is part of the broader **CALYX ecosystem**, which focuses on:
 Atlas handles **representation**.
 Other CALYX components handle **execution, orchestration, and memory**.
 
-You can use Atlas independently.
+Atlas can be used **independently**.
 
 ---
 
@@ -185,16 +161,6 @@ calyx-atlas/
 
 ---
 
-## Philosophy
-
-> **Representation matters more than intelligence.**
-
-Most LLM failures in software engineering are not model failures — they are **format failures**.
-
-CALYX Atlas treats structure as a first-class artifact, not an emergent property.
-
----
-
 ## Status
 
 * Python Atlas: ✅ working
@@ -213,11 +179,11 @@ MIT (subject to change if Atlas becomes part of a broader CALYX protocol release
 
 ## Final Note
 
-This project is intentionally *boring in execution* and *radical in representation*.
+> **Representation matters more than intelligence.**
+
+Most LLM failures in software engineering are not model failures — they are **format failures**.
+
+CALYX Atlas treats structure as a first-class artifact, not an emergent property.
 
 If you’re looking for a bundler, this is not it.
 If you’re trying to make complex systems **legible to intelligence**, welcome.
-
-
-
-
