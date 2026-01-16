@@ -1,0 +1,268 @@
+{
+  "format_version": "calyx-semantic-1.2",
+  "project_name": "JAQL - JSON + YAML Query Language",
+  "domain": ["data_transformation", "cli_tool", "jq_alternative", "yaml_pipelines"],
+  "ecosystem": "Python",
+  
+  // ========== ARCHITECTURAL INTENT ==========
+  "architectural_intent": {
+    "primary_goal": "Provide jq-like data transformation using declarative YAML pipelines",
+    "design_philosophy": "Unix tool mentality - pipes and filters",
+    "key_innovation": "YAML pipelines instead of jq syntax, designed for jc output",
+    "non_goals": ["GUI", "streaming at scale", "binary data", "real-time processing"]
+  },
+  
+  // ========== SEMANTIC INVARIANTS (MUST NEVER BE VIOLATED) ==========
+  "invariants": [
+    "safe_eval must never allow imports, builtins, or attribute access beyond safe list",
+    "Pipeline operations must be pure functions with no side effects",
+    "All modules must handle jc-style hyphenated keys ('load-state', 'cpu-percent')",
+    "Multi-document YAML input must be supported (--- separated documents)",
+    "Error handling must fail gracefully with clear messages, never crash",
+    "Expression evaluation must use AST parsing, not eval() on raw strings"
+  ],
+  
+  // ========== MODULE CONTRACTS ==========
+  "module_contracts": {
+    "jaql.utils": {
+      "purity": "pure",
+      "side_effects": "none",
+      "safety_level": "security_critical",
+      "contract": {
+        "safe_eval": {
+          "input": ["expression: str", "context: dict"],
+          "output": "evaluated_result: Any",
+          "ensures": ["no_imports_allowed", "only_safe_builtins", "context_is_isolated"],
+          "failure_mode": "returns_False_for_select_None_for_derive"
+        }
+      }
+    },
+    
+    "jaql.pipes": {
+      "purity": "pure",
+      "side_effects": "none",
+      "contract": {
+        "pipe_select": {
+          "algebraic": "relational_selection_σ",
+          "ensures": ["output ⊆ input", "predicate_applied_to_each_record"]
+        },
+        "pipe_project": {
+          "algebraic": "relational_projection_π", 
+          "ensures": ["output_fields ⊆ input_fields", "dot_notation_supported"]
+        },
+        "pipe_derive": {
+          "ensures": ["new_fields_added", "original_fields_preserved"]
+        }
+      }
+    },
+    
+    "jaql.io": {
+      "purity": "impure",
+      "side_effects": ["file_io", "stdin_stdout"],
+      "contract": {
+        "load_stream": {
+          "ensures": ["yaml_multi_doc_preferred", "fallback_to_json", "empty_input_returns_empty_list"]
+        }
+      }
+    }
+  },
+  
+  // ========== DEPENDENCY CONSTRAINTS ==========
+  "dependency_constraints": {
+    "allowed_dependencies": {
+      "jaql.cli": ["jaql.runner"],
+      "jaql.runner": ["jaql.parser", "jaql.pipes", "jaql.io"],
+      "jaql.pipes": ["jaql.utils"],
+      "jaql.utils": [],
+      "jaql.io": ["json", "yaml(optional)"],
+      "jaql.parser": ["yaml"]
+    },
+    
+    "forbidden_dependencies": {
+      "jaql.utils": ["jaql.io", "jaql.runner"],  // No IO in utils
+      "jaql.pipes": ["jaql.io", "jaql.runner"],  // Pipes must be pure
+      "all_modules": ["subprocess", "os.system", "eval", "exec"]  // Security
+    },
+    
+    "dependency_stability": {
+      "frozen": ["jaql.utils.safe_eval"],  // Never change API
+      "stable": ["jaql.pipes.*", "jaql.io.load_stream"],
+      "experimental": ["jaql.runner.multi_stage", "jaql.io.multi_document"]
+    }
+  },
+  
+  // ========== SAFETY CONSTRAINTS ==========
+  "safety_constraints": {
+    "security": {
+      "safe_eval": {
+        "forbidden_ast_nodes": ["Import", "ImportFrom", "Lambda", "FunctionDef", "ClassDef", "AsyncFunctionDef"],
+        "allowed_builtins": ["len", "min", "max", "sum", "abs", "str", "int", "float", "bool"],
+        "context_isolation": "no_globals_no_locals_beyond_provided"
+      }
+    },
+    
+    "memory": {
+      "rules": [
+        "all file handles must be closed",
+        "buffers must be freed after use",
+        "large datasets processed in-memory (warning for huge files)"
+      ]
+    },
+    
+    "performance": {
+      "constraints": [
+        "O(n) where n = records",
+        "expression evaluation per record",
+        "no streaming - full dataset in memory"
+      ],
+      "acceptable_tradeoffs": [
+        "memory_for_simplicity",
+        "AST_parsing_overhead_for_safety"
+      ]
+    }
+  },
+  
+  // ========== BEHAVIORAL CONTRACTS ==========
+  "behavioral_contracts": {
+    "data_model": {
+      "record": "dict[str, Any]",
+      "normalized_input": "list[record]",
+      "expression_context": {
+        "variables": "record fields as Python identifiers",
+        "helpers": ["rec (dict binding)", "get(key, default)"]
+      }
+    },
+    
+    "pipeline_execution": {
+      "order": "sequential_left_to_right",
+      "semantics": "functional_composition: f(g(x))",
+      "error_propagation": "fail_fast_with_validation"
+    },
+    
+    "jc_integration": {
+      "expected_input": "jc --yaml-out format",
+      "key_naming": "hyphenated_lowercase",
+      "multi_document": "supported_via_yaml_separators"
+    }
+  },
+  
+  // ========== TRANSLATION CONSTRAINTS ==========
+  "translation_constraints": {
+    "cross_language": {
+      "safe_eval": "must_use_ast_or_equivalent_restricted_eval",
+      "pipeline_semantics": "must_preserve_ordering_and_purity",
+      "jc_format": "must_preserve_hyphenated_key_support"
+    },
+    
+    "language_specific": {
+      "python": {
+        "type_hints": "preserve where present",
+        "docstrings": "preserve as comments",
+        "error_patterns": "preserve try/except structure"
+      }
+    }
+  },
+  
+  // ========== SEMANTIC TESTS (INTENT EXAMPLES) ==========
+  "semantic_tests": [
+    {
+      "name": "basic_select",
+      "input": [{"cpu": 90, "pid": 1}, {"cpu": 10, "pid": 2}],
+      "pipeline": [{"select": "rec['cpu'] > 50"}],
+      "expected": [{"cpu": 90, "pid": 1}],
+      "purpose": "Demonstrate relational selection σ"
+    },
+    {
+      "name": "nested_project",
+      "input": [{"user": {"name": "alice", "id": 1}}],
+      "pipeline": [{"project": ["user.name"]}],
+      "expected": [{"user.name": "alice"}],
+      "purpose": "Demonstrate dot notation projection"
+    },
+    {
+      "name": "derive_with_expression",
+      "input": [{"cpu_percent": 75}],
+      "pipeline": [{"derive": {"cpu_ratio": "rec['cpu_percent'] / 100"}}],
+      "expected": [{"cpu_percent": 75, "cpu_ratio": 0.75}],
+      "purpose": "Demonstrate computed columns"
+    },
+    {
+      "name": "jc_hyphenated_keys",
+      "input": [{"load-state": "loaded", "cpu-percent": 80}],
+      "pipeline": [{"select": "rec['load-state'] == 'loaded'"}],
+      "expected": [{"load-state": "loaded", "cpu-percent": 80}],
+      "purpose": "Demonstrate jc key compatibility"
+    }
+  ],
+  
+  // ========== EVOLUTION CONSTRAINTS ==========
+  "evolution": {
+    "frozen_apis": [
+      "jaql.utils.safe_eval(expr, context)",
+      "jaql.pipes.apply_pipeline(data, pipeline)",
+      "jaql.io.load_stream(text)"
+    ],
+    
+    "extensible_points": [
+      "jaql.pipes - add new pipe operations",
+      "jaql.runner - add new execution modes",
+      "jaql.io - add new input/output formats"
+    ],
+    
+    "deprecation_paths": {
+      "normalize_to_records": "consolidate_to_single_implementation"
+    }
+  },
+  
+  // ========== PERFORMANCE ENVELOPE ==========
+  "performance_envelope": {
+    "complexity_bounds": {
+      "select": "O(n) where n = records",
+      "project": "O(n * k) where k = fields",
+      "derive": "O(n * d) where d = derivations"
+    },
+    
+    "memory_profile": "in_memory_dataset_size * 2 (worst case)",
+    
+    "acceptable_scales": [
+      "thousands of records",
+      "megabytes of JSON/YAML",
+      "dozens of pipeline steps"
+    ],
+    
+    "unacceptable_scales": [
+      "gigabytes of data",
+      "millions of records",
+      "real-time streaming"
+    ]
+  },
+  
+  // ========== ERROR HANDLING CONTRACT ==========
+  "error_handling": {
+    "validation_phase": "fail_fast_with_detailed_errors",
+    "execution_phase": "continue_on_record_errors_skip_failed",
+    "user_feedback": "clear_english_messages_with_context",
+    
+    "recovery_strategies": {
+      "expression_error": "skip_record_return_false_or_none",
+      "io_error": "propagate_with_context",
+      "pipeline_error": "stop_execution_report_error"
+    }
+  },
+  
+  // ========== EXTERNAL CONTRACTS ==========
+  "external_contracts": {
+    "jc": {
+      "integration_type": "designed_for",
+      "expected_format": "yaml_multi_document",
+      "key_convention": "hyphenated_lowercase",
+      "data_sources": ["ps", "free", "ls", "system_commands"]
+    },
+    
+    "yaml": {
+      "requirement": "optional_with_fallback",
+      "library": "PyYAML",
+      "feature": "multi_document_support"
+    }
+  }
+}

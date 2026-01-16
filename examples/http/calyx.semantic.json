@@ -1,0 +1,376 @@
+{
+  "format_version": "calyx-semantic-1.3",
+  "project_name": "C HTTP Client",
+  "domain": ["networking", "cli_tool", "http_client", "system_programming"],
+  "ecosystem": "C/POSIX",
+  
+  // ========== ARCHITECTURAL INTENT ==========
+  "architectural_intent": {
+    "primary_goal": "Simple HTTP/1.0 client demonstrating network programming",
+    "design_philosophy": "Unix-style composable tools with clear error handling",
+    "key_innovation": "goto-based error cleanup pattern for C memory safety",
+    "non_goals": ["HTTPS/TLS", "HTTP/2+", "async_io", "production_scale"]
+  },
+  
+  // ========== SEMANTIC INVARIANTS (MUST NEVER BE VIOLATED) ==========
+  "invariants": [
+    "All malloc calls must have corresponding free in cleanup path",
+    "goto error pattern must be used for resource cleanup",
+    "URL parsing must use liburi library (not manual parsing)",
+    "Socket connections must be properly closed",
+    "Debug macros must provide context without crashing",
+    "Buffer abstraction must be used for dynamic strings"
+  ],
+  
+  // ========== MODULE CONTRACTS ==========
+  "module_contracts": {
+    "http/src/url.h": {
+      "purity": "pure_interface",
+      "side_effects": "none",
+      "safety_level": "medium",
+      "contract": {
+        "Url_struct": {
+          "purpose": "URL decomposition structure",
+          "fields": ["scheme", "hostname", "port", "path", "query", "fragment"],
+          "memory_rule": "all_strings_individually_allocated"
+        },
+        "url_free": {
+          "ensures": ["frees_all_Url_fields", "frees_Url_struct_itself"],
+          "idempotent": "safe_to_call_multiple_times"
+        }
+      }
+    },
+    
+    "http/src/url.c": {
+      "purity": "impure",
+      "side_effects": ["memory_allocation", "liburi_parsing"],
+      "safety_level": "medium",
+      "contract": {
+        "url_parse": {
+          "input": ["url_to_parse: char*"],
+          "output": "Url* (or NULL on error)",
+          "ensures": ["returns_fully_parsed_Url", "cleans_up_on_error", "sets_default_port_80"],
+          "error_handling": "goto_cleanup_with_uri_free"
+        },
+        "url_check": {
+          "input": ["Url*"],
+          "output": "int (0=valid, 1=invalid)",
+          "ensures": ["validates_scheme_is_http", "requires_hostname"]
+        }
+      }
+    },
+    
+    "http/src/connect.h": {
+      "purity": "pure_interface",
+      "side_effects": "none",
+      "safety_level": "medium",
+      "contract": {
+        "socket_functions": {
+          "lifecycle": ["init_connection", "make_connection", "make_request", "fetch_response"],
+          "protocol": "HTTP_1.0_with_GET_only",
+          "headers": ["Host", "Connection: close"]
+        }
+      }
+    },
+    
+    "http/src/connect.c": {
+      "purity": "impure",
+      "side_effects": ["network_io", "socket_operations", "dns_resolution"],
+      "safety_level": "medium",
+      "contract": {
+        "make_request": {
+          "ensures": ["builds_http_request", "sends_complete_request", "frees_request_buffer"],
+          "pattern": "allocate_send_cleanup"
+        },
+        "fetch_response": {
+          "ensures": ["reads_until_connection_close", "appends_to_buffer", "handles_partial_reads"],
+          "memory_safety": "stack_buffer_for_recv"
+        }
+      }
+    },
+    
+    "http/src/http.c": {
+      "purity": "impure",
+      "side_effects": ["program_execution", "stdio_io"],
+      "safety_level": "high",
+      "contract": {
+        "main": {
+          "workflow": ["parse_args", "parse_url", "resolve_dns", "connect", "send_request", "read_response", "cleanup"],
+          "ensures": ["all_resources_freed", "error_messages_to_stderr", "exit_codes_0/1"],
+          "error_pattern": "goto_cleanup_with_nested_checks"
+        }
+      }
+    },
+    
+    "http/src/dbg.h": {
+      "purity": "pure_macros",
+      "side_effects": ["debug_logging"],
+      "safety_level": "high",
+      "contract": {
+        "error_handling": {
+          "macros": ["debug", "jump_unless", "error_unless"],
+          "pattern": "goto_label_based_cleanup",
+          "ensures": ["compile_time_removable", "context_preserving"]
+        }
+      }
+    }
+  },
+  
+  // ========== DEPENDENCY CONSTRAINTS ==========
+  "dependency_constraints": {
+    "allowed_dependencies": {
+      "http/src/url.c": ["Uri.h", "buffer.h", "http/src/url.h", "http/src/dbg.h"],
+      "http/src/http.c": ["http/src/url.h", "http/src/connect.h", "http/src/dbg.h", "buffer.h"],
+      "http/src/connect.c": ["http/src/connect.h", "buffer.h", "netdb.h"],
+      "http/src/connect.h": ["http/src/dbg.h", "netdb.h", "buffer.h"],
+      "http/src/url.h": ["http/src/dbg.h", "Uri.h", "buffer.h"]
+    },
+    
+    "forbidden_dependencies": {
+      "all_modules": [
+        "pthread.h",          // No threading
+        "openssl/ssl.h",      // No HTTPS
+        "signal.h"            // No signal handling
+      ],
+      "url_parsing": [
+        "regex.h",            // Must use liburi
+        "manual_url_parsing"  // No roll-your-own URL parsing
+      ]
+    },
+    
+    "dependency_stability": {
+      "frozen": [
+        "http/src/dbg.h macros",
+        "Url struct definition",
+        "goto error pattern"
+      ],
+      "stable": [
+        "http/src/url.c parsing functions",
+        "http/src/connect.c network functions",
+        "buffer.h abstraction"
+      ],
+      "experimental": [
+        "TODO query_fragment_handling",
+        "HTTP_header_parsing"
+      ]
+    }
+  },
+  
+  // ========== SAFETY CONSTRAINTS ==========
+  "safety_constraints": {
+    "security": {
+      "memory_safety": {
+        "rules": [
+          "every malloc must have free in cleanup path",
+          "strncpy over strcpy for bounded copies",
+          "calloc for zero-initialized allocations"
+        ],
+        "pattern": "goto_error_with_cleanup_labels"
+      },
+      "network_safety": {
+        "rules": [
+          "AF_UNSPEC for IPv4/IPv6 compatibility",
+          "SOCK_STREAM for TCP",
+          "check socket() and connect() return values"
+        ]
+      }
+    },
+    
+    "memory": {
+      "allocation_patterns": {
+        "Url_parsing": "malloc_Url_then_malloc_fields",
+        "buffers": "use_buffer_h_abstraction",
+        "strings": "strdup_for_liburi_strings"
+      },
+      "cleanup_rules": [
+        "url_free frees all fields then struct",
+        "freeaddrinfo for DNS results",
+        "close() for sockets",
+        "buffer_free for dynamic buffers"
+      ]
+    },
+    
+    "performance": {
+      "constraints": [
+        "O(1) URL parsing via liburi",
+        "O(n) path reconstruction",
+        "blocking network I/O",
+        "single connection at a time"
+      ],
+      "acceptable_tradeoffs": [
+        "memory_for_simplicity",
+        "blocking_for_readability",
+        "liburi_overhead_for_correctness"
+      ]
+    }
+  },
+  
+  // ========== BEHAVIORAL CONTRACTS ==========
+  "behavioral_contracts": {
+    "data_structures": {
+      "Url": {
+        "lifetime": "created_by_url_parse_freed_by_url_free",
+        "ownership": "caller_owns_all_strings",
+        "defaults": ["port=80_if_missing", "path=/_if_empty"]
+      },
+      "Buffer": {
+        "source": "external_buffer_h",
+        "purpose": "dynamic_string_accumulation",
+        "lifetime": "alloc_append_free_pattern"
+      }
+    },
+    
+    "network_protocol": {
+      "version": "HTTP_1.0",
+      "method": "GET_only",
+      "headers": ["Host (required)", "Connection: close"],
+      "response": "read_until_connection_close"
+    },
+    
+    "error_handling": {
+      "pattern": "goto_label_based",
+      "cleanup": "reverse_order_resource_release",
+      "reporting": "stderr_with_context",
+      "exit_codes": ["0=success", "1=error"]
+    }
+  },
+  
+  // ========== TRANSLATION CONSTRAINTS ==========
+  "translation_constraints": {
+    "cross_language": {
+      "goto_pattern": "must_preserve_resource_cleanup_semantics",
+      "liburi_dependency": "must_use_equivalent_uri_parsing_library",
+      "buffer_abstraction": "must_preserve_dynamic_string_safety"
+    },
+    
+    "c_specific": {
+      "memory_management": "manual_malloc_free_patterns",
+      "header_files": "preserve_ifdef_guard_pattern",
+      "function_prototypes": "preserve_K&R_style_if_present"
+    }
+  },
+  
+  // ========== SEMANTIC TESTS (INTENT EXAMPLES) ==========
+  "semantic_tests": [
+    {
+      "name": "url_parsing_http",
+      "input": "http://example.com/path",
+      "expected": {
+        "scheme": "http",
+        "hostname": "example.com",
+        "port": "80",
+        "path": "/path"
+      },
+      "purpose": "Demonstrate basic HTTP URL parsing"
+    },
+    {
+      "name": "url_parsing_custom_port",
+      "input": "http://localhost:8080/api",
+      "expected": {
+        "scheme": "http",
+        "hostname": "localhost",
+        "port": "8080",
+        "path": "/api"
+      },
+      "purpose": "Demonstrate custom port handling"
+    },
+    {
+      "name": "error_cleanup_pattern",
+      "scenario": "url_parse fails after malloc",
+      "expected": {
+        "behavior": "goto_error_label",
+        "cleanup": ["uriFreeUriMembersA", "free(uri)", "url_free(url)"],
+        "return": "NULL"
+      },
+      "purpose": "Demonstrate goto-based error cleanup"
+    },
+    {
+      "name": "http_request_format",
+      "input": {
+        "hostname": "example.com",
+        "path": "/index.html"
+      },
+      "expected": "GET /index.html HTTP/1.0\r\nHost: example.com\r\nConnection: close\r\n\r\n",
+      "purpose": "Demonstrate HTTP/1.0 request formatting"
+    }
+  ],
+  
+  // ========== EVOLUTION CONSTRAINTS ==========
+  "evolution": {
+    "frozen_apis": [
+      "Url struct layout",
+      "url_free(Url*) signature",
+      "dbg.h macro patterns",
+      "goto error cleanup semantics"
+    ],
+    
+    "extensible_points": [
+      "http/src/connect.c - add new HTTP methods",
+      "http/src/url.c - add query/fragment parsing",
+      "http/src/http.c - add command line options"
+    ],
+    
+    "deprecation_paths": {
+      "TODO_comments": "implement_query_fragment_support",
+      "hardcoded_http": "could_add_https_support"
+    }
+  },
+  
+  // ========== PERFORMANCE ENVELOPE ==========
+  "performance_envelope": {
+    "complexity_bounds": {
+      "url_parsing": "O(1) via liburi",
+      "path_reconstruction": "O(n) where n = path segments",
+      "network_io": "blocking_with_buffer_size_limits"
+    },
+    
+    "memory_profile": "linear_with_url_complexity",
+    
+    "acceptable_scales": [
+      "single_url_per_execution",
+      "kilobyte_responses",
+      "dozens_of_path_segments"
+    ],
+    
+    "unacceptable_scales": [
+      "mass_url_fetching",
+      "megabyte_responses",
+      "real_time_streaming"
+    ]
+  },
+  
+  // ========== ERROR HANDLING CONTRACT ==========
+  "error_handling": {
+    "validation_phase": "command_line_args_check",
+    "parsing_phase": "goto_cleanup_on_liburi_failure",
+    "network_phase": "check_all_system_call_returns",
+    "cleanup_phase": "release_all_resources_in_reverse_order",
+    
+    "user_feedback": {
+      "command_line": "Usage: http <url>",
+      "url_errors": "Invalid URL supplied",
+      "network_errors": "gai_strerror messages",
+      "io_errors": "perror-style where appropriate"
+    }
+  },
+  
+  // ========== EXTERNAL CONTRACTS ==========
+  "external_contracts": {
+    "liburi": {
+      "purpose": "RFC-compliant_URL_parsing",
+      "required_functions": ["uriParseUriA", "uriFreeUriMembersA", "uriNormalizeSyntaxExA"],
+      "license": "unknown_assume_permissive"
+    },
+    
+    "buffer.h": {
+      "purpose": "dynamic_string_buffer_abstraction",
+      "required_functions": ["buffer_alloc", "buffer_append", "buffer_free", "buffer_to_s"],
+      "assumption": "memory_safe_abstraction"
+    },
+    
+    "posix_sockets": {
+      "apis_required": ["getaddrinfo", "socket", "connect", "send", "recv", "close"],
+      "assumptions": ["IPv4/IPv6_dual_stack", "TCP_reliable_stream"]
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "format_version": "calyx-no-more-lies-1.0",
+  "project_name": "JAQL",
+  "language": "python",
+
+  "never_claim": [
+    "That JAQL supports streaming input (it does not)",
+    "That JAQL handles gigabyte-scale datasets",
+    "That JAQL uses recursion or generator-based pipelines",
+    "That JAQL supports SQL or advanced query optimizations",
+    "That safe_eval is sandboxed at OS level (it is AST-only)",
+    "That JAQL normalizes hyphenated keys into identifiers",
+    "That JAQL guarantees stable sort order unless specified",
+    "That JAQL supports concurrency or parallel pipelines"
+  ],
+
+  "never_introduce": [
+    "eval, exec, compile",
+    "dynamic imports",
+    "reflection-based evaluation",
+    "side effects inside pipe functions",
+    "mutation of input datasets",
+    "reliance on global state",
+    "hidden caching layers",
+    "schema inference or validation engines"
+  ],
+
+  "never_infer": [
+    "types of dynamic JSON/YAML fields",
+    "schema structures not explicitly given",
+    "implicit conversions for dot-notation",
+    "automatic flattening of nested fields",
+    "jc key renaming"
+  ],
+
+  "truths_that_must_be_observed": [
+    "safe_eval uses AST and only AST",
+    "all pipelines are sequential",
+    "pipe_select filters; pipe_project reduces fields; pipe_derive expands fields",
+    "data is always a list of dicts",
+    "errors must propagate with context",
+    "multi-document YAML is parsed into multiple lists"
+  ],
+
+  "operational_restrictions": [
+    "do not increase JAQL's execution model complexity",
+    "do not implement databases or stateful storage",
+    "do not implement your own YAML or JSON parser",
+    "do not introduce threading or multiprocessing"
+  ],
+
+  "llm_disallowed_phrases": [
+    "JAQL optimizes queries automatically",
+    "JAQL performs lazy evaluation",
+    "JAQL supports SQL-like joins",
+    "safe_eval is equivalent to Python eval",
+    "pipelines automatically parallelize"
+  ],
+
+  "strict_sandbox_behavior": {
+    "memory_model": "JAQL is in-memory only",
+    "execution_model": "deterministic functional transformations",
+    "security_model": "AST-restricted expressions only"
+  }
+}
+

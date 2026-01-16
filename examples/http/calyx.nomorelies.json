@@ -1,0 +1,66 @@
+{
+  "format_version": "calyx-nml-1.0",
+  "project": "C HTTP Client",
+
+  "truth_rules": [
+    "Do not invent functions not present in the C code or headers.",
+    "Do not modify the Url struct layout or add fields.",
+    "Do not claim HTTPS/TLS support.",
+    "Do not claim async, non-blocking, or multi-threaded behavior.",
+    "Do not invent POSIX APIs beyond getaddrinfo, socket, connect, send, recv, close.",
+    "Do not generate URL parsing code that bypasses liburi."
+  ],
+
+  "behavioral_truth_constraints": {
+    "http_version": "HTTP/1.0 only",
+    "method": "GET only",
+    "response_semantics": "read_until_connection_close",
+    "memory_model": "manual_allocation_with_cleanup",
+    "error_model": "goto_label_cleanup"
+  },
+
+  "logic_constraints": {
+    "liburi_parsing_required": {
+      "violation": "Parser switched to custom parsing or regex.",
+      "fix_hint": "Use uriParseUriA and uriFreeUriMembersA."
+    },
+    "goto_cleanup_required": {
+      "violation": "Missing or misordered cleanup paths.",
+      "fix_hint": "Reintroduce goto error cleanup pattern."
+    },
+    "malloc_free_pairing_required": {
+      "violation": "Missing free() for allocated memory.",
+      "fix_hint": "Ensure all Url fields + struct are freed."
+    }
+  },
+
+  "internal_consistency_checks": [
+    "If a new field is added to Url, url_free must be updated.",
+    "If buffer usage is modified, all buffer_free calls must be preserved.",
+    "If request formatting changes, must preserve HTTP/1.0 compliant syntax.",
+    "If DNS resolution changes, freeaddrinfo must still be called."
+  ],
+
+  "forbidden_transformations": [
+    "Replacing goto cleanup with early returns.",
+    "Switching from recv() loops to fread or other file IO functions.",
+    "Changing blocking socket semantics.",
+    "Introducing multi-threading via pthreads.",
+    "Adding HTTPS via OpenSSL."
+  ],
+
+  "safety_checks": [
+    "Ensure every code path frees all allocated memory.",
+    "Ensure every socket opened is closed.",
+    "Ensure buffer_append usage matches allocation size expectations.",
+    "Ensure response is read until connection close."
+  ],
+
+  "model_grounding_hints": [
+    "Refer only to functions that exist in this repo.",
+    "When describing behavior, tie claims directly to observed code.",
+    "Cross-check invariants against dbg.h, url.c, and connect.c.",
+    "Never infer features not explicitly present (HTTPS, POST, async)."
+  ]
+}
+

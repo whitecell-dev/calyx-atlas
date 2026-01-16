@@ -1,0 +1,103 @@
+{
+  "format_version": "calyx-guard-1.0",
+  "project": "C HTTP Client",
+
+  "frozen_interfaces": [
+    "Url struct layout",
+    "url_free signature",
+    "dbg.h macro patterns",
+    "goto-based cleanup semantics",
+    "buffer.h API contracts",
+    "HTTP/1.0 request layout"
+  ],
+
+  "stable_interfaces": [
+    "url_parse",
+    "url_check",
+    "init_connection",
+    "make_connection",
+    "make_request",
+    "fetch_response"
+  ],
+
+  "forbidden_dependencies": {
+    "all_modules": [
+      "pthread.h",
+      "openssl/ssl.h",
+      "signal.h",
+      "regex.h",
+      "curl/curl.h"
+    ],
+    "parsing": [
+      "manual_url_parsing",
+      "string_tokenizers_for_url"
+    ],
+    "networking": [
+      "non-blocking_io",
+      "select/poll/epoll",
+      "HTTP_2_or_higher"
+    ]
+  },
+
+  "purity_constraints": {
+    "http/src/url.h": {
+      "allowed_side_effects": [],
+      "forbidden_side_effects": ["malloc", "io"]
+    },
+    "http/src/url.c": {
+      "allowed_side_effects": ["malloc", "liburi_calls"],
+      "forbidden_side_effects": ["network_io"]
+    },
+    "http/src/connect.c": {
+      "allowed_side_effects": ["network_io", "dns_resolution"],
+      "forbidden_side_effects": ["file_io", "threading"]
+    }
+  },
+
+  "invariant_enforcement": {
+    "memory_cleanup_required": true,
+    "goto_error_pattern_required": true,
+    "liburi_required_for_parsing": true,
+    "buffer_abstraction_required": true,
+    "http_version_must_equal": "HTTP/1.0",
+    "request_method_must_equal": "GET"
+  },
+
+  "dependency_graph_rules": {
+    "http/src/url.c": {
+      "may_import": ["Url.h", "Uri.h", "buffer.h", "dbg.h"],
+      "must_not_import": ["connect.h"]
+    },
+    "http/src/connect.c": {
+      "may_import": ["connect.h", "buffer.h", "dbg.h", "netdb.h"],
+      "must_not_import": ["url.h", "Uri.h"]
+    },
+    "http/src/http.c": {
+      "may_import": ["url.h", "connect.h", "dbg.h", "buffer.h"],
+      "must_not_import": ["Uri.h"]
+    }
+  },
+
+  "mutation_constraints": {
+    "may_extend": [
+      "support for query/fragment parsing",
+      "additional HTTP headers",
+      "custom CLI flags"
+    ],
+    "must_not_modify": [
+      "Url struct field layout",
+      "malloc/free pairing rules",
+      "goto cleanup labels",
+      "HTTP/1.0 request line format",
+      "read-until-connection-close behavior"
+    ]
+  },
+
+  "translation_constraints": {
+    "goto_pattern": "must_be_preserved_for_cleanup",
+    "memory_model": "manual_explicit_free",
+    "parsing_library": "liburi_or_equivalent",
+    "buffer_model": "must_preserve_dynamic_string_safety"
+  }
+}
+

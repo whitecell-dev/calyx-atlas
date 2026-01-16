@@ -1,0 +1,98 @@
+{
+  "format_version": "calyx-guard-1.0",
+  "project_name": "JAQL",
+  "language": "python",
+
+  "mutation_rules": {
+    "forbidden": [
+      "changing safe_eval semantics",
+      "adding new builtin functions without approval",
+      "introducing imports into jaql.utils",
+      "adding side effects to jaql.pipes.*",
+      "modifying purity of any pipe functions",
+      "adding subprocess/os.system usage",
+      "removing jc hyphenated-key support",
+      "changing pipeline execution from left-to-right",
+      "introducing global mutable state",
+      "removing AST validation"
+    ],
+    
+    "allowed": [
+      "adding new pure pipe operations in jaql.pipes",
+      "adding helper utilities that remain pure",
+      "adding new CLI flags in jaql.cli",
+      "improving error messages",
+      "optimizing loops without altering semantics",
+      "refactoring for readability while preserving contracts"
+    ]
+  },
+
+  "frozen_interfaces": [
+    "jaql.utils.safe_eval",
+    "jaql.pipes.pipe_select",
+    "jaql.pipes.pipe_project",
+    "jaql.pipes.pipe_derive",
+    "jaql.io.load_stream",
+    "jaql.runner.run_pipeline"
+  ],
+
+  "safe_eval_contract": {
+    "must_enforce": [
+      "no imports",
+      "no attribute access except rec[...]",
+      "AST whitelist only",
+      "no direct access to Python builtins except allowed list",
+      "context isolation (no globals, no locals)"
+    ],
+    "allowed_builtins": [
+      "len", "min", "max", "sum", "abs",
+      "str", "int", "float", "bool"
+    ],
+    "forbidden_ast_nodes": [
+      "Import", "ImportFrom", "Lambda", "FunctionDef",
+      "ClassDef", "AsyncFunctionDef", "With", "Try",
+      "Global", "Nonlocal"
+    ]
+  },
+
+  "purity_constraints": {
+    "jaql.utils": "must_remain_pure",
+    "jaql.pipes": "must_remain_pure",
+    "jaql.io": "may_have_io_side_effects",
+    "jaql.runner": "may_have_control_side_effects_but_not_eval"
+  },
+
+  "dependency_rules": {
+    "allowed": {
+      "jaql.utils": [],
+      "jaql.pipes": ["jaql.utils"],
+      "jaql.io": ["json", "yaml"],
+      "jaql.runner": ["jaql.parser", "jaql.pipes", "jaql.io"]
+    },
+    "forbidden_globally": [
+      "subprocess", "os.system", "eval", "exec",
+      "multiprocessing", "threading", "ctypes"
+    ]
+  },
+
+  "data_handling_rules": {
+    "must_support": [
+      "list[dict] broad records",
+      "hyphenated jc-style keys",
+      "multi-document YAML"
+    ],
+    "must_not_introduce": [
+      "schema enforcement",
+      "implicit casting of hyphen keys to underscores",
+      "sorting of output unless explicitly specified"
+    ]
+  },
+
+  "execution_semantics": {
+    "pipeline_order": "left_to_right",
+    "error_handling": "fail_fast_pipeline_level",
+    "derive_failure_mode": "return_none_and_skip_field",
+    "select_failure_mode": "return_false"
+  }
+}
+

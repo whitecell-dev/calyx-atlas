@@ -1,0 +1,145 @@
+{
+  "format_version": "calyx-semantic-1.0",
+  "project_name": "g3d - Simple 3D Engine for LÖVE",
+  "domain": ["3d_graphics", "game_engine", "lua_framework"],
+  "ecosystem": "LÖVE2D (Love2D Game Engine)",
+  "audience": ["lua_developers", "game_dev_beginners", "educational_projects"],
+  "complexity_level": "medium",
+  "novelty": "Minimalist 3D rendering on top of 2D engine",
+  
+  "key_architectural_insights": [
+    "Shader-based 3D rendering pipeline",
+    "Model-view-projection matrix transformations",
+    "OBJ file loader with triangulation",
+    "Collision detection system",
+    "First-person camera controller",
+    "FFI-based mesh compression"
+  ],
+  
+  "educational_value": {
+    "teaches": ["3d_math", "matrix_transforms", "collision_detection", "model_loading"],
+    "difficulty": "beginner_to_intermediate",
+    "prerequisites": ["basic_lua", "vector_math"]
+  },
+  
+  "practical_value": {
+    "production_ready": "yes_for_hobby_projects",
+    "performance_characteristics": "cpu_bound_software_rasterizer",
+    "suitable_for": ["prototypes", "educational_demos", "simple_3d_games"],
+    "limitations": ["not_hardware_accelerated", "simple_shading"]
+  },
+  
+  "module_intents": {
+    "g3d.init": {
+      "role": "entry_point",
+      "purpose": "Initialize engine, set up shaders, coordinate modules",
+      "importance": "critical",
+      "pattern": "singleton_initializer"
+    },
+    
+    "g3d.model": {
+      "role": "core_renderable",
+      "purpose": "3D mesh container with transformations and rendering",
+      "importance": "critical",
+      "pattern": "class_factory",
+      "depends_on": ["matrices", "objloader", "collisions", "camera"]
+    },
+    
+    "g3d.matrices": {
+      "role": "math_engine",
+      "purpose": "4x4 matrix operations for 3D transformations",
+      "importance": "critical",
+      "pattern": "math_utility",
+      "concepts": ["transformation_matrix", "projection_matrix", "view_matrix", "lookat"]
+    },
+    
+    "g3d.camera": {
+      "role": "view_controller",
+      "purpose": "Camera/viewport management with FPS controls",
+      "importance": "critical",
+      "pattern": "singleton_with_state",
+      "features": ["first_person_controls", "lookat_function", "projection_management"]
+    },
+    
+    "g3d.collisions": {
+      "role": "physics_subsystem",
+      "purpose": "Collision detection between shapes and meshes",
+      "importance": "optional_but_useful",
+      "pattern": "algorithm_collection",
+      "algorithms": ["ray_triangle", "sphere_triangle", "capsule_triangle", "closest_point"]
+    },
+    
+    "g3d.vectors": {
+      "role": "math_utility",
+      "purpose": "Fast vector operations without table allocation",
+      "importance": "foundational",
+      "pattern": "pure_functions",
+      "optimization": "memory_efficient_argument_passing"
+    },
+    
+    "g3d.objloader": {
+      "role": "asset_loader",
+      "purpose": "Parse Wavefront OBJ files into vertex arrays",
+      "importance": "utility",
+      "pattern": "file_parser",
+      "features": ["triangulation", "uv_flipping_option"]
+    },
+    
+    "main": {
+      "role": "demo_application",
+      "purpose": "Example usage showing Earth-Moon rotation",
+      "importance": "example_only",
+      "pattern": "demonstration"
+    },
+    
+    "conf": {
+      "role": "engine_config",
+      "purpose": "LÖVE engine configuration",
+      "importance": "boilerplate",
+      "pattern": "configuration"
+    }
+  },
+  
+  "key_technical_choices": {
+    "coordinate_system": "right_handed_z_up",
+    "matrix_layout": "row_major",
+    "vertex_format": "position_texcoord_normal_color",
+    "rendering_approach": "shader_based_software",
+    "collision_approach": "per_triangle_testing",
+    "memory_optimization": "optional_ffi_compression"
+  },
+  
+  "reasoning_hints": {
+    "for_understanding": "Start with vectors.lua → matrices.lua → model.lua",
+    "for_modification": "Shader is in separate .vert file not included in bundle",
+    "for_extending": "Add new collision types in collisions.lua pattern",
+    "performance_tips": "Use model:compress() for production, it reduces memory 90%",
+    "common_pitfalls": "Z-up coordinate system, watch out for matrix multiplication order"
+  },
+  
+  "external_context": {
+    "depends_on": ["LÖVE2D", "OpenGL_shaders"],
+    "similar_to": ["raylib_3d", "three.js_conceptually"],
+    "file_missing": "g3d.vert (shader file) - critical for actual rendering"
+  },
+  
+  "code_quality_indicators": {
+    "documentation": "good_comments",
+    "error_handling": "basic",
+    "testing": "none_visible",
+    "modularity": "high",
+    "api_design": "consistent"
+  },
+  
+  "learning_path": [
+    "1. Understand the vector math in vectors.lua",
+    "2. See how matrices build transforms in matrices.lua", 
+    "3. Follow how model combines matrices and meshes",
+    "4. Look at camera for view/projection setup",
+    "5. Study collisions for advanced usage examples"
+  ],
+  
+  "estimated_token_savings": "70-80% less reading needed",
+  "primary_use_cases": ["learning_3d", "simple_3d_games", "educational_demos"],
+  "not_suited_for": ["aaa_games", "complex_shading", "vr_applications"]
+}

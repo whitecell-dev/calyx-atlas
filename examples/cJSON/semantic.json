@@ -1,0 +1,180 @@
+{
+  "format_version": "calyx-semantic-1.2",
+  "project_name": "cJSON",
+  "project_type": "single_file_c_library",
+  "language": "C",
+  "domain": [
+    "json_parsing",
+    "serialization",
+    "embedded_systems",
+    "data_structures"
+  ],
+
+  // ============================================================
+  // ARCHITECTURAL INTENT
+  // ============================================================
+  "architectural_intent": {
+    "primary_goal": "Parse, manipulate, and serialize JSON using a minimal ANSI C implementation",
+    "design_philosophy": "Small, dependency-free, embeddable",
+    "key_properties": [
+      "single translation unit",
+      "no stdio dependency",
+      "caller-managed memory"
+    ],
+    "non_goals": [
+      "streaming parsing",
+      "schema validation",
+      "DOM mutation safety",
+      "thread safety guarantees"
+    ]
+  },
+
+  // ============================================================
+  // SEMANTIC INVARIANTS (CRITICAL)
+  // ============================================================
+  "semantic_invariants": [
+    "Library must remain dependency-free",
+    "Must compile as ANSI C (C89)",
+    "Memory allocation must be overrideable via hooks",
+    "Tree structure is heap-allocated and caller-owned",
+    "Parsing is recursive descent",
+    "Serialization allocates output buffers",
+    "No global mutable state except allocator hooks"
+  ],
+
+  // ============================================================
+  // CORE DATA MODEL (CONCEPTUAL, NOT STRUCTURAL)
+  // ============================================================
+  "conceptual_data_model": {
+    "json_node": {
+      "represents": "one JSON value",
+      "relationships": [
+        "child (first element for arrays/objects)",
+        "next / prev (siblings)"
+      ],
+      "value_semantics": "exactly one value field is valid per node type"
+    },
+    "document_model": "tree of json_node"
+  },
+
+  // ============================================================
+  // OPERATION FAMILIES (PATTERN-LEVEL)
+  // ============================================================
+  "operation_families": {
+    "parsing": {
+      "pattern": "cJSON_Parse*",
+      "behavior": "string → JSON tree",
+      "memory_effect": "allocates nodes recursively",
+      "failure_mode": "returns NULL and sets error pointer"
+    },
+
+    "creation": {
+      "pattern": "cJSON_Create*",
+      "behavior": "programmatic JSON construction",
+      "memory_effect": "allocates single nodes",
+      "ownership": "caller owns returned node"
+    },
+
+    "traversal": {
+      "pattern": "cJSON_Get*Item*",
+      "behavior": "navigate tree without allocation",
+      "mutation": "read-only access"
+    },
+
+    "mutation": {
+      "pattern": "cJSON_Add* / Replace* / Delete*",
+      "behavior": "modify tree structure",
+      "risk": "caller must manage lifetimes carefully"
+    },
+
+    "serialization": {
+      "pattern": "cJSON_Print*",
+      "behavior": "JSON tree → string",
+      "memory_effect": "allocates output buffer",
+      "format_variants": ["formatted", "unformatted"]
+    }
+  },
+
+  // ============================================================
+  // MEMORY & OWNERSHIP MODEL
+  // ============================================================
+  "memory_model": {
+    "allocation": "malloc/free or user-provided hooks",
+    "node_lifetime": "caller-controlled",
+    "string_lifetime": "caller must free printed output",
+    "failure_behavior": "partial trees may exist on parse failure"
+  },
+
+  // ============================================================
+  // ERROR MODEL
+  // ============================================================
+  "error_model": {
+    "parse_errors": "tracked via global error pointer",
+    "allocation_failures": "propagate as NULL returns",
+    "no_exceptions": true,
+    "no_error_codes": true
+  },
+
+  // ============================================================
+  // PERFORMANCE CHARACTERISTICS
+  // ============================================================
+  "performance_profile": {
+    "parsing_complexity": "O(n)",
+    "serialization_complexity": "O(n)",
+    "memory_complexity": "one allocation per JSON node",
+    "intended_scale": [
+      "small to medium JSON documents",
+      "embedded or constrained environments"
+    ]
+  },
+
+  // ============================================================
+  // DEPENDENCY & ISOLATION CONSTRAINTS
+  // ============================================================
+  "dependency_constraints": {
+    "allowed": ["stdlib"],
+    "forbidden": [
+      "stdio",
+      "pthread",
+      "platform-specific APIs"
+    ]
+  },
+
+  // ============================================================
+  // EVOLUTION RULES
+  // ============================================================
+  "evolution_rules": {
+    "must_preserve": [
+      "single-file distribution",
+      "public API names",
+      "struct layout compatibility"
+    ],
+    "safe_to_extend": [
+      "additional helper functions",
+      "new print options",
+      "optional parse flags"
+    ]
+  },
+
+  // ============================================================
+  // SEMANTIC TESTS (INTENT-LEVEL)
+  // ============================================================
+  "semantic_tests": [
+    {
+      "name": "parse_print_roundtrip",
+      "intent": "parsed JSON can be serialized back",
+      "guarantee": "structural equivalence"
+    },
+    {
+      "name": "allocator_override",
+      "intent": "custom malloc/free hooks are respected",
+      "guarantee": "no direct calls to malloc/free after override"
+    },
+    {
+      "name": "tree_traversal",
+      "intent": "sibling and child links form a valid tree",
+      "guarantee": "bidirectional traversal works"
+    }
+  ]
+}
+
