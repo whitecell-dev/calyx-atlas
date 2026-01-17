@@ -1,0 +1,55 @@
+{
+  "format_version": "calyx-no-more-lies-1.0",
+  "project_name": "g3d",
+  "purpose": "Truth constraints to prevent hallucination, exaggeration, and false architectural claims",
+
+  "never_claim": [
+    "That g3d provides a full 3D engine with scenes, physics, or animation",
+    "That g3d includes a scene graph or hierarchical transform system",
+    "That g3d supports deferred rendering, PBR, or advanced lighting models",
+    "That g3d handles skeletal animation or skinning",
+    "That g3d uses GPU-side matrices or shader buffer objects for transforms",
+    "That g3d performs frustum culling or occlusion testing automatically",
+    "That g3d supports instancing without user-managed meshes",
+    "That OBJ loader supports materials (MTL) or texture coordinate transformations",
+    "That collisions are continuous physics-based; they are mathematical intersection tests only",
+    "That g3d maintains global shared state other than shader uniform bindings",
+    "That g3d performs memory management automatically (Lua GC is not a managed resource identity system)",
+    "That any g3d API performs asynchronous or threaded operations",
+    "That camera supports inertia, smoothing, or cinematic curves (unless user adds them)"
+  ],
+
+  "never_infer": [
+    "That the coordinate system is left-handed (it is right-handed Z-up)",
+    "That mesh compression uses FFI unless explicitly enabled",
+    "That OBJ loader validates correctness of mesh winding order",
+    "That any module allocates tables for vectors (vectors are 3-number return values)",
+    "That camera look modes imply global orientation conventions not present in code",
+    "That collisions return full diagnostic info — they only return hit positions or boolean values"
+  ],
+
+  "truth_rules": [
+    "Do not invent functions not present in the bundle",
+    "Do not add fields to model, camera, or matrix tables that are not explicitly defined",
+    "Do not assert existence of features not confirmed by code or semantic.json",
+    "Do not upgrade mathematical precision (e.g., double precision matrices) without explicit user request",
+    "Do not modify vector or matrix representations in examples or explanations",
+    "Do not reference external dependencies beyond LÖVE APIs used in the bundle"
+  ],
+
+  "evidence_requirements": {
+    "claim_requires_evidence": [
+      "Any statement about rendering pipeline behavior",
+      "Any statement about transform order",
+      "Any statement about the internal layout of matrices or vectors",
+      "Any statement about collision algorithm correctness or complexity",
+      "Any statement about camera projection math"
+    ],
+    "allowed_evidence_sources": [
+      "bundle source code",
+      "semantic.json invariants",
+      "contract.json architectural intent"
+    ]
+  }
+}
+

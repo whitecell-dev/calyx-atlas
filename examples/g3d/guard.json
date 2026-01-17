@@ -1,0 +1,99 @@
+{
+  "format_version": "calyx-guard-1.0",
+  "project_name": "g3d",
+  "purpose": "Mutation boundaries and evolution rules for safe extensions, translations, and refactors",
+
+  "frozen_interfaces": [
+    "Matrix representation must remain 16-number array (row-major)",
+    "Vector operations must return 3 numbers, not tables",
+    "Model.vertexFormat must remain compatible with LÖVE Mesh requirements",
+    "Transform order must remain: scale → rotation → translation",
+    "Camera uniform names: modelMatrix, viewMatrix, projectionMatrix",
+    "g3d.init must delete global g3d after initialization",
+    "OBJ loader return format: a list of flat vertices (x, y, z, u, v, nx, ny, nz)"
+  ],
+
+  "forbidden_mutations": [
+    "Adding new fields to core tables (model, camera, matrix) without explicit opt-in",
+    "Changing vector or matrix return signatures",
+    "Changing any g3d.* module to depend on love.window, love.event, or love.timer for logic",
+    "Switching coordinate system without architectural version increment",
+    "Changing camera aspect-ratio behavior to use FOV-based autoscaling",
+    "Enabling deferred rendering inside g3d.model:draw",
+    "Adding multithreading or coroutine-driven rendering behavior",
+    "Embedding world-space or global transforms inside model objects",
+    "Moving collision functions to use table-based vectors",
+    "Changing the meaning of quaternion order or Euler rotation order"
+  ],
+
+  "allowed_extensions": [
+    "Add additional collision primitives (box, plane, cylinder, capsule)",
+    "Add material-like attributes that do not require shader changes",
+    "Add camera modes (orbit, trackball, follow, overhead)",
+    "Add utility mesh generators (cube, sphere, plane)",
+    "Add helper math functions (lerp, slerp, clampVector)",
+    "Add optional OBJ loader improvements (MTL parsing) IF kept isolated",
+    "Add shader extension hooks as long as defaults remain untouched"
+  ],
+
+  "conditional_extensions": [
+    {
+      "feature": "mesh instancing",
+      "allowed_if": [
+        "Does not modify existing draw() interface",
+        "Instancing API added as optional extension",
+        "Does not modify vertexFormat"
+      ]
+    },
+    {
+      "feature": "physics integration",
+      "allowed_if": [
+        "Lives in separate module",
+        "Does not modify current collision function signatures"
+      ]
+    }
+  ],
+
+  "forbidden_dependencies": {
+    "all_modules": [
+      "os.*",
+      "io.*",
+      "debug.*",
+      "package.*",
+      "external physics libraries",
+      "ffi (unless compression is explicitly enabled by user)"
+    ],
+    "matrices": ["love.*"],
+    "vectors": ["love.*"],
+    "collisions": ["love.*"]
+  },
+
+  "guard_conditions": [
+    "If modifying draw(), new behavior must be strictly additive",
+    "If modifying camera, projection must remain stable across LÖVE window resizes",
+    "If translating g3d to another language, matrix/vector representation must remain identical",
+    "Collision algorithm optimizations must preserve hit accuracy within floating-point epsilon",
+    "OBJ loader modifications must preserve triangulation invariants"
+  ],
+
+  "mutation_profile": {
+    "safe_zone": [
+      "Add new math utilities",
+      "Add optional modules under g3d.extensions",
+      "Add shader customization hooks with default Fallback"
+    ],
+    "danger_zone": [
+      "Modifying transform mathematics",
+      "Changing shader uniform names",
+      "Changing default vertex winding",
+      "Changing collision return types"
+    ],
+    "prohibited_zone": [
+      "Changing matrix shape or vector representation",
+      "Introducing scene graph behavior implicitly",
+      "Adding global state to camera or model",
+      "Replacing math with foreign libraries"
+    ]
+  }
+}
+

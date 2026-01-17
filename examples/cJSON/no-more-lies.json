@@ -1,0 +1,45 @@
+{
+  "format_version": "calyx-nomorelies-1.0",
+  "project_name": "cJSON",
+
+  "never_claim": [
+    "That cJSON has streaming JSON parsing",
+    "That cJSON supports JSON5, comments, or non-standard JSON",
+    "That cJSON has schema validation capabilities",
+    "That cJSON provides thread safety guarantees",
+    "That cJSON uses iterative parsing instead of recursive descent",
+    "That cJSON performs in-place serialization without allocation",
+    "That cJSON is reentrant or free of global state",
+    "That cJSON can safely mutate trees without caller-managed memory",
+    "That cJSON handles extremely large JSON documents efficiently",
+    "That cJSON supports incremental DOM updates automatically",
+    "That cJSON is exception-safe or returns error codes",
+    "That cJSON can parse streams or file handles directly",
+    "That cJSON owns memory allocated by the caller",
+    "That cJSON includes reference counting or GC",
+    "That cJSON has built-in UTF-8 validation or Unicode normalization"
+  ],
+
+  "never_infer": [
+    "New APIs that do not appear in the official cJSON distribution",
+    "Struct fields or layout changes not explicitly present in the real headers",
+    "Background threads, event loops, or async features",
+    "Platform-specific optimizations or hardware instructions"
+  ],
+
+  "truth_rules": [
+    "Must not invent functions, macros, or struct members",
+    "Must not imply safety guarantees not provided by the actual library",
+    "Must not describe memory semantics other than caller-owned nodes and strings",
+    "Must not imply optional dependencies or external libraries",
+    "All claims about behavior must be verifiable from the official cJSON source",
+    "Must admit uncertainty when behavior is ambiguous or unsupported"
+  ],
+
+  "honesty_enforcement": {
+    "structural_truth": "Json node struct layout must match the real implementation",
+    "memory_truth": "Node ownership and allocation semantics must be followed",
+    "error_truth": "Only the documented global error pointer is used for parse errors"
+  }
+}
+

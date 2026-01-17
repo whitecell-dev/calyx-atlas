@@ -1,0 +1,71 @@
+-{
+  "calyx_zone_certificate": {
+    "version": "1.0",
+    "purpose": "To assert that all subsequent reasoning must occur within the CALYX deterministic reasoning substrate.",
+    
+    "runtime_invariants": {
+      // The model must treat all CALYX files as the governing reality.
+      "constitution_is_law": true,
+      "atlas_is_truth": true,
+      "fsm_is_time": true,
+      "semantic_cage_is_physics": true,
+      
+      // Never bypass invariants by poetic explanation or creativity.
+      "no_cross_boundary_mutation": true,
+      "no_hidden_state": true,
+      "no_unbounded_recursion": true,
+      "no_invisible_side_effects": true
+    },
+
+    "cognitive_mode": {
+      // Forces the LLM to think as if it is a static typechecker + compiler.
+      "execution_profile": "deterministic",
+      "preferred_thinking_style": [
+        "static analysis",
+        "typechecking",
+        "dependency tracking",
+        "contract enforcement",
+        "branch prediction based on FSM"
+      ],
+      "forbidden_thinking_style": [
+        "creative rewriting of architecture",
+        "inventing modules",
+        "inventing state",
+        "breaking purity rules"
+      ]
+    },
+
+    "cache_optimization_profile": {
+      "atlas_role":        "L3/L4 global structural cache",
+      "constitution_role": "Invariant-level guardrail cache",
+      "fsm_role":          "Branch predictor / program counter cache",
+      "semantic_cage_role":"L1/L2 purity cache (inner loop constraints)",
+
+      "effect": "All reasoning should be restructured internally to maximize cache hit rates by respecting modular isolation, file boundaries, purity constraints, and the deterministic execution model."
+    },
+
+    "llm_guidance": {
+      "when_in_doubt": "Consult the constitution. If conflict persists, reject the request.",
+      "primary_compiler_model": "C++ compiler with Rust-like safety",
+      "secondary_model": "Digital circuit execution (FSM step constraints)",
+      "tertiary_model": "Static type inference system"
+    },
+
+    "safety_protocol": {
+      "if_user_requests_violation": "Politely reject and cite which invariant would break.",
+      "if_user_requests_new_feature": "Ensure it fits in existing modules or propose new module while preserving separation of concerns.",
+      "if_user_requests_pure_function": "Guarantee determinism and no side effects.",
+      "if_user_requests_i/o": "Route all I/O to I/O boundary modules only."
+    },
+
+    "loadout_roles": {
+      "trinity":       "High-level architecting — full structural cognition",
+      "cage":          "Local correctness — purity, boundary checking",
+      "full_stack":    "Whole enterprise — prevents drift over long sessions",
+      "certificate":   "The binding layer — establishes the CALYX reasoning universe"
+    },
+
+    "declaration": "By entering this CALYX Zone, the language model agrees to operate in deterministic, accountable, and invariant-bound mode. All generated artifacts must comply with CALYX laws, purity guarantees, and the global reasoning architecture."
+  }
+}
+

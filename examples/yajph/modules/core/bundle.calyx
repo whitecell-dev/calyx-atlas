@@ -1,0 +1,526 @@
+# ======================================================================
+# CALYX BUNDLE - LLM OPTIMIZED FORMAT
+# ======================================================================
+
+CALYX_METADATA = {
+  "format_version": "calyx-1.0",
+  "total_modules": 4,
+  "layers": {
+    "UTILITY": 4
+  },
+  "external_deps": [
+    "dataclasses",
+    "enum",
+    "json",
+    "typing",
+    "yajph.core.evaluator",
+    "yajph.core.models",
+    "yajph.core.router",
+    "yajph.resources.provider"
+  ],
+  "generated_at": "2026-01-16T22:48:09.433298Z"
+}
+
+# ======================================================================
+# MODULE MAP (name → path, layer)
+# ======================================================================
+MODULE_MAP = {
+    "models": {
+        "path": "models.py",
+        "layer": "UTILITY",
+        "exports": ["RuleType", "Decision", "RuleDefinition"]
+    },
+    "__init__": {
+        "path": "__init__.py",
+        "layer": "UTILITY",
+        "exports": ["__all__"]
+    },
+    "router": {
+        "path": "router.py",
+        "layer": "UTILITY",
+        "exports": ["Router"]
+    },
+    "evaluator": {
+        "path": "evaluator.py",
+        "layer": "UTILITY",
+        "exports": ["RuleEvaluator"]
+    },
+}
+
+# ======================================================================
+# DEPENDENCY GRAPH (module → [dependencies])
+# ======================================================================
+DEPENDENCY_GRAPH = {
+    "models": [],
+    "__init__": [],
+    "router": [],
+    "evaluator": [],
+}
+
+# ======================================================================
+# MODULE CONTENTS (PRESERVED EXACTLY)
+# ======================================================================
+MODULE_CONTENTS = {
+    # ------------------------------------------------------------
+    # MODULE: models
+    # LAYER: UTILITY
+    # PATH: models.py
+    # ------------------------------------------------------------
+    "models": """
+\"\"\"
+Core data models for YAJPH.
+
+ARCHITECTURAL INVARIANT: Decision dataclass is FROZEN.
+Only add optional fields to maintain backward compatibility.
+\"\"\"
+
+import json
+from typing import Dict, Any, List, Optional, Callable
+from dataclasses import dataclass, asdict, field
+from enum import Enum
+
+
+class RuleType(Enum):
+    \"\"\"Enumeration of supported rule types for type safety\"\"\"
+    NUMERIC_MIN = "numeric_min"
+    NUMERIC_MAX = "numeric_max"
+    PERCENTAGE_MAX = "percentage_max"
+    REQUIRED = "required"
+    CUSTOM = "custom"
+
+
+@dataclass
+class Decision:
+    \"\"\"
+    The explainable decision result.
+    
+    ARCHITECTURAL INVARIANT: This structure is FROZEN.
+    New fields must be optional to maintain backward compatibility.
+    
+    Fields:
+        passed: Whether the evaluation passed
+        score: Optional numeric score
+        missing: Dict of missing/insufficient fields
+        rejected_on: Field name that caused rejection
+        your_score: User's actual value
+        threshold: Required threshold value
+        fix: Human-readable fix suggestion
+        resources: List of educational resources
+        audit_trail: Evaluation steps taken
+        metadata: Optional additional context
+    \"\"\"
+    passed: bool
+    score: Optional[float] = None
+    missing: Dict[str, str] = field(default_factory=dict)
+    rejected_on: Optional[str] = None
+    your_score: Optional[Any] = None
+    threshold: Optional[Any] = None
+    fix: Optional[str] = None
+    resources: List[str] = field(default_factory=list)
+    audit_trail: List[str] = field(default_factory=list)
+    metadata: Optional[Dict[str, Any]] = field(default_factory=dict)
+    
+    def to_json(self) -> str:
+        \"\"\"Convert to JSON string\"\"\"
+        return json.dumps(asdict(self), indent=2)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        \"\"\"Convert to dictionary\"\"\"
+        return asdict(self)
+
+
+@dataclass
+class RuleDefinition:
+    \"\"\"
+    Internal structure for type-safe rule representation.
+    NOT exposed in public API - maintains encapsulation.
+    
+    This is the transform layer between config and execution.
+    \"\"\"
+    name: str
+    rule_type: RuleType
+    threshold: Any
+    comparator: Callable[[Any, Any], bool]
+    error_message_template: str
+
+
+""",
+
+    # ------------------------------------------------------------
+    # MODULE: __init__
+    # LAYER: UTILITY
+    # PATH: __init__.py
+    # ------------------------------------------------------------
+    "__init__": """
+\"\"\"
+Core computation module - ZERO I/O
+All functions are pure and testable in isolation
+\"\"\"
+
+from yajph.core.models import Decision, RuleType, RuleDefinition
+from yajph.core.router import Router
+from yajph.core.evaluator import RuleEvaluator
+
+__all__ = [
+    'Decision',
+    'RuleType', 
+    'RuleDefinition',
+    'Router',
+    'RuleEvaluator',
+]
+
+
+""",
+
+    # ------------------------------------------------------------
+    # MODULE: router
+    # LAYER: UTILITY
+    # PATH: router.py
+    # ------------------------------------------------------------
+    "router": """
+\"\"\"
+Core Router implementation.
+
+ARCHITECTURAL INVARIANT: Router.evaluate() signature is FROZEN.
+Input: Dict[str, Any]
+Output: Decision
+\"\"\"
+
+from typing import Dict, Any, Optional
+from yajph.core.models import Decision
+from yajph.core.evaluator import RuleEvaluator
+from yajph.resources.provider import ResourceProvider
+
+
+class Router:
+    \"\"\"
+    The core YAJPH reasoning engine.
+    
+    ARCHITECTURAL INVARIANT: Public interface is FROZEN.
+    - Constructor signature must remain compatible
+    - evaluate() input/output contract cannot change
+    
+    This class orchestrates rule evaluation but delegates
+    pure computation to RuleEvaluator.
+    \"\"\"
+    
+    def __init__(
+        self, 
+        input_schema: Optional[str] = None, 
+        output_schema: Optional[str] = None,
+        rules: Optional[Dict[str, Any]] = None, 
+        models: Optional[Dict[str, str]] = None,
+        resource_provider: Optional[ResourceProvider] = None
+    ):
+        \"\"\"
+        Initialize Router with rules and configuration.
+        
+        Args:
+            input_schema: Path to input schema (future use)
+            output_schema: Path to output schema (future use)
+            rules: Dictionary of evaluation rules
+            models: Model configuration (future use)
+            resource_provider: Custom resource provider
+        \"\"\"
+        self.input_schema = input_schema
+        self.output_schema = output_schema
+        self.rules = rules or {}
+        self.models = models or {}
+        self._resource_provider = resource_provider or ResourceProvider()
+    
+    def evaluate(self, data: Dict[str, Any]) -> Decision:
+        \"\"\"
+        Evaluate data against rules with full explainability.
+        
+        ARCHITECTURAL INVARIANT: This signature is FROZEN.
+        
+        Args:
+            data: Dictionary of values to evaluate
+            
+        Returns:
+            Decision object with pass/fail and explanation
+            
+        Example:
+            >>> router = Router(rules={'requirements': {'age': 18}})
+            >>> result = router.evaluate({'age': 20})
+            >>> result.passed
+            True
+        \"\"\"
+        audit_trail = [f"evaluating: {list(data.keys())}"]
+        
+        # Check required items first (fail-fast)
+        for required_item in self.rules.get('must_have', []):
+            if required_item not in data or not data[required_item]:
+                return Decision(
+                    passed=False,
+                    rejected_on=required_item,
+                    missing={required_item: "required but missing"},
+                    audit_trail=audit_trail,
+                    fix=f"Please provide {required_item}"
+                )
+        
+        # Check threshold requirements
+        for rule_name, threshold in self.rules.get('requirements', {}).items():
+            audit_trail.append(f"checking: {rule_name}")
+            
+            if rule_name not in data:
+                return Decision(
+                    passed=False,
+                    missing={rule_name: "required but not provided"},
+                    rejected_on=rule_name,
+                    audit_trail=audit_trail,
+                    fix=f"Please provide {rule_name} information"
+                )
+            
+            user_value = data[rule_name]
+            
+            # Delegate to pure evaluator
+            try:
+                rule_def = RuleEvaluator.create_rule_definition(rule_name, threshold)
+                
+                if not rule_def.comparator(user_value, threshold):
+                    return Decision(
+                        passed=False,
+                        rejected_on=rule_name,
+                        your_score=user_value,
+                        threshold=threshold,
+                        missing={rule_name: f"{user_value} (need {threshold})"},
+                        audit_trail=audit_trail,
+                        resources=self._resource_provider.get_resources(rule_name),
+                        fix=rule_def.error_message_template.format(threshold=threshold)
+                    )
+            except ValueError as e:
+                # Handle malformed rules gracefully
+                audit_trail.append(f"error: {str(e)}")
+                return Decision(
+                    passed=False,
+                    rejected_on=rule_name,
+                    audit_trail=audit_trail,
+                    fix=f"Rule configuration error: {str(e)}"
+                )
+        
+        # All checks passed!
+        audit_trail.append("all_checks_passed")
+        return Decision(
+            passed=True,
+            audit_trail=audit_trail,
+            fix="No action needed - you qualify!"
+        )
+
+
+""",
+
+    # ------------------------------------------------------------
+    # MODULE: evaluator
+    # LAYER: UTILITY
+    # PATH: evaluator.py
+    # ------------------------------------------------------------
+    "evaluator": """
+\"\"\"
+Pure rule evaluation logic.
+
+BOUNDARY: This module performs ZERO I/O.
+All functions are pure and deterministic.
+\"\"\"
+
+from typing import Union, Any
+from yajph.core.models import RuleType, RuleDefinition
+
+
+class RuleEvaluator:
+    \"\"\"
+    Pure evaluation logic extracted for testability.
+    
+    All methods are static to emphasize purity.
+    No instance state, no side effects.
+    \"\"\"
+    
+    @staticmethod
+    def _parse_percentage(value: Union[str, int, float]) -> float:
+        \"\"\"
+        Pure function: Convert percentage string to float.
+        
+        Args:
+            value: Percentage as string ("45%"), int, or float
+            
+        Returns:
+            Float representation of percentage
+            
+        Examples:
+            >>> RuleEvaluator._parse_percentage("45%")
+            45.0
+            >>> RuleEvaluator._parse_percentage(45)
+            45.0
+        \"\"\"
+        if isinstance(value, str) and value.endswith('%'):
+            return float(value.rstrip('%'))
+        return float(value)
+    
+    @staticmethod
+    def _parse_numeric_with_slash(value: Union[str, int, float]) -> float:
+        \"\"\"
+        Pure function: Handle "2/5" rating format.
+        
+        Args:
+            value: Rating as "numerator/denominator" or numeric
+            
+        Returns:
+            Numeric value (numerator if slash format)
+            
+        Examples:
+            >>> RuleEvaluator._parse_numeric_with_slash("3/5")
+            3.0
+            >>> RuleEvaluator._parse_numeric_with_slash(3.5)
+            3.5
+        \"\"\"
+        if isinstance(value, str) and '/' in value:
+            return float(value.split('/')[0])
+        return float(value)
+    
+    @staticmethod
+    def evaluate_percentage_rule(user_value: Any, threshold: str) -> bool:
+        \"\"\"
+        Pure function: Evaluate percentage threshold (MAX).
+        
+        Args:
+            user_value: User's percentage value
+            threshold: Maximum allowed percentage
+            
+        Returns:
+            True if user_value <= threshold
+        \"\"\"
+        threshold_val = RuleEvaluator._parse_percentage(threshold)
+        user_val = RuleEvaluator._parse_percentage(user_value)
+        return user_val <= threshold_val
+    
+    @staticmethod
+    def evaluate_numeric_rule(user_value: Any, threshold: Union[int, float]) -> bool:
+        \"\"\"
+        Pure function: Evaluate numeric minimum threshold.
+        
+        Args:
+            user_value: User's numeric value
+            threshold: Minimum required value
+            
+        Returns:
+            True if user_value >= threshold
+        \"\"\"
+        user_val = RuleEvaluator._parse_numeric_with_slash(user_value)
+        return user_val >= threshold
+    
+    @staticmethod
+    def create_rule_definition(rule_name: str, threshold: Any) -> RuleDefinition:
+        \"\"\"
+        Pure function: Convert rule config into typed definition.
+        
+        This is the transform layer between YAML config and execution.
+        
+        Args:
+            rule_name: Name of the rule
+            threshold: Threshold value (determines rule type)
+            
+        Returns:
+            RuleDefinition with appropriate comparator
+            
+        Raises:
+            ValueError: If threshold type is unsupported
+        \"\"\"
+        if isinstance(threshold, str) and threshold.endswith('%'):
+            return RuleDefinition(
+                name=rule_name,
+                rule_type=RuleType.PERCENTAGE_MAX,
+                threshold=threshold,
+                comparator=RuleEvaluator.evaluate_percentage_rule,
+                error_message_template=f"Reduce {rule_name} to below {{threshold}}"
+            )
+        elif isinstance(threshold, (int, float)):
+            return RuleDefinition(
+                name=rule_name,
+                rule_type=RuleType.NUMERIC_MIN,
+                threshold=threshold,
+                comparator=RuleEvaluator.evaluate_numeric_rule,
+                error_message_template=f"Improve {rule_name} to at least {{threshold}}"
+            )
+        else:
+            raise ValueError(
+                f"Unsupported threshold type for rule '{rule_name}': {type(threshold)}"
+            )
+
+
+""",
+
+}
+
+# ======================================================================
+# PUBLIC API (what to expose)
+# ======================================================================
+
+from typing import List
+
+def get_module(name: str) -> str:
+    """Retrieve module source by name"""
+    return MODULE_CONTENTS.get(name, "")
+
+def list_modules(layer: str = None) -> List[str]:
+    """List modules, optionally filtered by layer"""
+    if layer:
+        return [name for name, meta in MODULE_MAP.items() if meta['layer'] == layer]
+    return list(MODULE_CONTENTS.keys())
+
+def get_dependencies(name: str) -> List[str]:
+    """Get module dependencies"""
+    return DEPENDENCY_GRAPH.get(name, [])
+
+def get_layer_stats() -> dict:
+    """Get statistics by layer"""
+    return CALYX_METADATA['layers']
+
+def get_external_deps() -> List[str]:
+    """Get external dependencies"""
+    return CALYX_METADATA['external_deps']
+
+# ======================================================================
+# RUNTIME SHIM (for execution)
+# ======================================================================
+import sys
+from types import ModuleType
+
+def _calyx_import_shim():
+    """Register modules in sys.modules"""
+    # Only create packages that exist in our bundle
+    packages = set(name.split('.')[0] for name in MODULE_CONTENTS)
+    
+    for pkg in packages:
+        # Create package
+        pkg_name = f"{__name__}.{pkg}"
+        pkg_mod = ModuleType(pkg_name)
+        sys.modules[pkg_name] = pkg_mod
+        
+        # Add submodules that belong to this package
+        for full_name in MODULE_CONTENTS:
+            if full_name.startswith(pkg + '.'):
+                sub_name = full_name[len(pkg)+1:]
+                sub_full = f"{pkg_name}.{sub_name}"
+                sub_mod = ModuleType(sub_full)
+                
+                # Execute the module code in its namespace
+                exec(MODULE_CONTENTS[full_name], sub_mod.__dict__)
+                sys.modules[sub_full] = sub_mod
+                setattr(pkg_mod, sub_name, sub_mod)
+
+# Auto-register on import
+_calyx_import_shim()
+
+# ======================================================================
+# MAIN ENTRY POINT (if run as script)
+# ======================================================================
+if __name__ == '__main__':
+    print("CALYX Bundle Loaded")
+    print(f"Modules: {len(MODULE_CONTENTS)}")
+    print(f"Layers: {CALYX_METADATA["layers"]}")
+    print("\nAvailable commands:")
+    print("  - get_module(name)")
+    print("  - list_modules(layer=None)")
+    print("  - get_dependencies(name)")
+    print("  - get_layer_stats()")
+    print("  - get_external_deps()")

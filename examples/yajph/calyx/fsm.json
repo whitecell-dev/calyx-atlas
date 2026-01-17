@@ -1,0 +1,96 @@
+{
+  "format_version": "calyx-fsm-1.0",
+
+  "states": {
+    "LOAD_RULES": {
+      "module": "io.loaders",
+      "max_loc": 800,
+      "invariants": [
+        "This module may perform file I/O",
+        "Outputs must be Dict[str, Any]",
+        "Never call RuleEvaluator directly"
+      ]
+    },
+
+    "LOAD_DATA": {
+      "module": "io.loaders",
+      "max_loc": 800,
+      "invariants": [
+        "May read YAML or JSON",
+        "Returns Dict[str, Any]"
+      ]
+    },
+
+    "ROUTE": {
+      "module": "core.router",
+      "max_loc": 800,
+      "invariants": [
+        "evaluate(data) -> Decision",
+        "Must not perform file I/O",
+        "Must not mutate ResourceProvider",
+        "Delegates all rule checking to RuleEvaluator"
+      ]
+    },
+
+    "EVALUATE_RULE": {
+      "module": "core.evaluator",
+      "max_loc": 800,
+      "invariants": [
+        "Pure functions only",
+        "No I/O, no random, no time",
+        "Comparator functions must be deterministic"
+      ]
+    },
+
+    "FORMAT_DECISION": {
+      "module": "core.models",
+      "max_loc": 800,
+      "invariants": [
+        "Decision must serialize to dict/JSON",
+        "Decision fields must remain backward compatible"
+      ]
+    }
+  },
+
+  "transitions": [
+    {
+      "event": "rules_loaded",
+      "from": "LOAD_RULES",
+      "to": "LOAD_DATA",
+      "validation": [
+        "output is Dict[str, Any]",
+        "no global state created"
+      ]
+    },
+    {
+      "event": "data_loaded",
+      "from": "LOAD_DATA",
+      "to": "ROUTE",
+      "validation": ["data keys are strings"]
+    },
+    {
+      "event": "rule_check",
+      "from": "ROUTE",
+      "to": "EVALUATE_RULE",
+      "validation": [
+        "Router never evaluates thresholds directly",
+        "Router must delegate to RuleEvaluator.create_rule_definition"
+      ]
+    },
+    {
+      "event": "evaluation_complete",
+      "from": "EVALUATE_RULE",
+      "to": "FORMAT_DECISION",
+      "validation": [
+        "Returned value must be a Decision instance"
+      ]
+    }
+  ],
+
+  "global_invariants": [
+    "All transitions preserve Dict[str, Any] data model",
+    "No module may introduce side effects except io.loaders",
+    "Router is the ONLY orchestrator"
+  ]
+}
+

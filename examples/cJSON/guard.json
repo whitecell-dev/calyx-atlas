@@ -1,0 +1,79 @@
+{
+  "format_version": "calyx-guard-1.0",
+  "project_name": "cJSON",
+
+  "frozen_interfaces": [
+    "cJSON struct layout",
+    "Public API names (cJSON_* functions)",
+    "Single-file distribution requirement",
+    "Allocator hook signatures",
+    "Recursive descent parsing model",
+    "Serialization functions' return type and ownership semantics",
+    "Error pointer mechanism"
+  ],
+
+  "forbidden_mutations": [
+    "Adding streaming or incremental parsing",
+    "Introducing schema validation or type checking",
+    "Adding thread safety primitives (mutexes, atomics, pthreads)",
+    "Changing memory allocation strategy away from user-overrideable hooks",
+    "Modifying cJSON struct to add fields, reference counts, or GC metadata",
+    "Adding I/O operations (fopen, fread, printf, etc.)",
+    "Replacing recursion with iterative parsing unless behavior is identical",
+    "Adding global mutable state besides allocator hooks",
+    "Changing the tree ownership model",
+    "Breaking ANSI C89 compatibility"
+  ],
+
+  "allowed_mutations": [
+    "Adding optional helper functions built on top of public APIs",
+    "Adding new serialization flags that do not break existing behavior",
+    "Introducing optional parse flags without changing defaults",
+    "Refactoring implementation for readability while preserving ABI and semantics",
+    "Improving memory error handling without modifying API contracts",
+    "Adding compile-time feature macros (disabled by default)"
+  ],
+
+  "stability_levels": {
+    "frozen": [
+      "API signatures",
+      "Core memory model",
+      "Recursive parser behavior",
+      "Node struct layout"
+    ],
+    "stable": [
+      "Helper functions",
+      "Pretty-printing behavior",
+      "Error pointer semantics"
+    ],
+    "experimental": [
+      "Optional flags for formatting",
+      "Alternate allocator strategies (behind macros)"
+    ]
+  },
+
+  "mutation_rules": {
+    "memory_model": {
+      "must_preserve": [
+        "caller owns all allocated nodes",
+        "caller frees serialization buffers",
+        "partial trees may remain on error"
+      ]
+    },
+    "parsing_rules": {
+      "must_preserve": [
+        "recursive descent nature",
+        "null-on-error return convention",
+        "global error pointer behavior"
+      ]
+    },
+    "serialization_rules": {
+      "must_preserve": [
+        "output buffer always heap allocated",
+        "caller frees returned string",
+        "formatted and unformatted variants"
+      ]
+    }
+  }
+}
+

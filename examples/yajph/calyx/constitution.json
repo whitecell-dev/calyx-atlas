@@ -1,0 +1,71 @@
+{
+  "format_version": "calyx-constitution-1.0",
+
+  "system_intent": {
+    "purpose": "Deterministic, explainable rule evaluation engine",
+    "design_philosophy": [
+      "I/O must be boundary-isolated",
+      "Computation must be pure and deterministic",
+      "Router public interface must remain stable",
+      "Rule evaluation must be transparent and debuggable"
+    ]
+  },
+
+  "global_invariants": {
+    "purity": [
+      "core.evaluator has ZERO I/O",
+      "core.models defines FROZEN dataclasses",
+      "ResourceProvider must remain immutable"
+    ],
+    "api": [
+      "Router.evaluate(input: Dict) -> Decision is FROZEN",
+      "attach_router signature is FROZEN",
+      "Decision dataclass fields must remain backward compatible"
+    ],
+    "data_model": [
+      "Decision must be serializable to/from dict and JSON",
+      "Rules are always Dict[str, Any]",
+      "All module communication uses Python-native dicts"
+    ]
+  },
+
+  "forbidden_mutations": [
+    "Changing Router.evaluate signature",
+    "Introducing I/O into core.* modules",
+    "Changing Decision required fields",
+    "Adding network dependencies",
+    "Adding global mutable state"
+  ],
+
+  "allowed_extensions": [
+    "New optional fields in Decision",
+    "New rule types inside RuleEvaluator",
+    "New demos under examples/*",
+    "New loaders inside io.loaders preserving boundaries"
+  ],
+
+  "performance_contracts": {
+    "router": "All evaluations must remain O(n_rules)",
+    "evaluator": "Pure functions only — no caching, no global state"
+  },
+
+  "ownership_model": {
+    "resource_provider": "Immutable — add_resource returns a NEW instance",
+    "router": "Owns no external resources beyond provided rules"
+  },
+
+  "llm_guidance": {
+    "never_claim": [
+      "That core.evaluator performs I/O",
+      "That Router supports async evaluation",
+      "That rules can be anything other than Dict[str, Any]"
+    ],
+    "trusted_sources": [
+      "atlas.calyx",
+      "constitution.json",
+      "fsm.json",
+      "module-level semantic.json files"
+    ]
+  }
+}
+

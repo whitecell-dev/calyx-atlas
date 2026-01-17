@@ -1,145 +1,250 @@
 {
-  "format_version": "calyx-semantic-1.0",
+  "format_version": "calyx-semantic-1.2",
   "project_name": "g3d - Simple 3D Engine for LÖVE",
-  "domain": ["3d_graphics", "game_engine", "lua_framework"],
-  "ecosystem": "LÖVE2D (Love2D Game Engine)",
-  "audience": ["lua_developers", "game_dev_beginners", "educational_projects"],
-  "complexity_level": "medium",
-  "novelty": "Minimalist 3D rendering on top of 2D engine",
-  
-  "key_architectural_insights": [
-    "Shader-based 3D rendering pipeline",
-    "Model-view-projection matrix transformations",
-    "OBJ file loader with triangulation",
-    "Collision detection system",
-    "First-person camera controller",
-    "FFI-based mesh compression"
+  "domain": ["3d_graphics", "game_engine", "lua", "love2d"],
+  "ecosystem": "Lua + LÖVE",
+
+  // ============================================================
+  //  ARCHITECTURAL INTENT
+  // ============================================================
+  "architectural_intent": {
+    "primary_goal": "Provide a lightweight, easy-to-use 3D abstraction layer on top of LÖVE with minimal dependencies",
+    "design_philosophy": [
+      "Simplicity over completeness",
+      "Functional clarity over performance micro-optimization",
+      "Pure math modules with no table allocations when avoidable",
+      "Open and hackable architecture"
+    ],
+    "key_innovations": [
+      "Matrix + vector math implemented without tables to reduce GC pressure",
+      "OBJ loading simplified and triangulated automatically",
+      "Camera abstraction compatible with first-person and orbital controls"
+    ],
+    "non_goals": [
+      "Physics simulation",
+      "Scene graph/tree",
+      "Material system",
+      "Skeletal animation / skinning",
+      "Deferred rendering",
+      "Multithreading"
+    ]
+  },
+
+  // ============================================================
+  //  SEMANTIC INVARIANTS — MUST NEVER BE VIOLATED
+  // ============================================================
+  "invariants": [
+    "Matrix representation must always remain a flat 16-number array in row-major order",
+    "Vector functions must avoid table allocations except where explicitly required",
+    "Model.vertexFormat must stay compatible with LÖVE Mesh specification",
+    "Model transformations must always be applied in the order: scale → rotation → translation",
+    "Camera.viewMatrix and projectionMatrix must always be updated before rendering",
+    "OBJ loader must always triangulate any polygon with >3 vertices",
+    "Collision functions must treat vertices as immutable numeric triples, not tables with named keys",
+    "Meshes must always be backed by love.graphics.newMesh; raw arrays are not directly drawable",
+    "g3d.init must remove g3d from global namespace after initialization"
   ],
-  
-  "educational_value": {
-    "teaches": ["3d_math", "matrix_transforms", "collision_detection", "model_loading"],
-    "difficulty": "beginner_to_intermediate",
-    "prerequisites": ["basic_lua", "vector_math"]
-  },
-  
-  "practical_value": {
-    "production_ready": "yes_for_hobby_projects",
-    "performance_characteristics": "cpu_bound_software_rasterizer",
-    "suitable_for": ["prototypes", "educational_demos", "simple_3d_games"],
-    "limitations": ["not_hardware_accelerated", "simple_shading"]
-  },
-  
-  "module_intents": {
-    "g3d.init": {
-      "role": "entry_point",
-      "purpose": "Initialize engine, set up shaders, coordinate modules",
-      "importance": "critical",
-      "pattern": "singleton_initializer"
-    },
-    
+
+  // ============================================================
+  //  MODULE CONTRACTS — WHAT EACH MODULE GUARANTEES
+  // ============================================================
+  "module_contracts": {
     "g3d.model": {
-      "role": "core_renderable",
-      "purpose": "3D mesh container with transformations and rendering",
-      "importance": "critical",
-      "pattern": "class_factory",
-      "depends_on": ["matrices", "objloader", "collisions", "camera"]
+      "purity": "impure",
+      "side_effects": ["mesh_allocation", "texture_loading", "GPU_upload"],
+      "guarantees": [
+        "newModel(path|table, texture, translation, rotation, scale) returns a drawable model",
+        "setTransform, setTranslation, setRotation, setScale must update internal matrix immediately",
+        "draw() must always send model/view/projection matrices to shader"
+      ]
     },
-    
+
     "g3d.matrices": {
-      "role": "math_engine",
-      "purpose": "4x4 matrix operations for 3D transformations",
-      "importance": "critical",
-      "pattern": "math_utility",
-      "concepts": ["transformation_matrix", "projection_matrix", "view_matrix", "lookat"]
+      "purity": "pure",
+      "side_effects": "none",
+      "guarantees": [
+        "Matrix always stored as 16-number array",
+        "Quaternion and Euler rotation both supported",
+        "setTransformationMatrix must apply rotation before scale",
+        "Projection matrices must follow standard OpenGL conventions"
+      ]
     },
-    
-    "g3d.camera": {
-      "role": "view_controller",
-      "purpose": "Camera/viewport management with FPS controls",
-      "importance": "critical",
-      "pattern": "singleton_with_state",
-      "features": ["first_person_controls", "lookat_function", "projection_management"]
-    },
-    
-    "g3d.collisions": {
-      "role": "physics_subsystem",
-      "purpose": "Collision detection between shapes and meshes",
-      "importance": "optional_but_useful",
-      "pattern": "algorithm_collection",
-      "algorithms": ["ray_triangle", "sphere_triangle", "capsule_triangle", "closest_point"]
-    },
-    
+
     "g3d.vectors": {
-      "role": "math_utility",
-      "purpose": "Fast vector operations without table allocation",
-      "importance": "foundational",
-      "pattern": "pure_functions",
-      "optimization": "memory_efficient_argument_passing"
+      "purity": "pure",
+      "side_effects": "none",
+      "guarantees": [
+        "All vector operations return 3 numbers, never tables",
+        "normalize(x,y,z) returns (0,0,0) when magnitude = 0",
+        "Magnitude and dot/cross must remain mathematically correct"
+      ]
     },
-    
+
+    "g3d.camera": {
+      "purity": "impure",
+      "side_effects": ["updates shader matrices", "reads window dimensions"],
+      "guarantees": [
+        "firstPersonMovement and firstPersonLook must update viewMatrix",
+        "lookAt and lookInDirection must preserve pitch/direction consistency",
+        "aspect ratio must always reflect actual window size"
+      ]
+    },
+
+    "g3d.collisions": {
+      "purity": "pure",
+      "performance": "critical",
+      "guarantees": [
+        "triangleRay must return the closest hit only",
+        "triangleSphere and triangleCapsule must follow Möller–Trumbore semantics",
+        "No vector tables allocated inside hot paths",
+        "findClosest and findAny must treat transform.translation/scale as overrides"
+      ]
+    },
+
     "g3d.objloader": {
-      "role": "asset_loader",
-      "purpose": "Parse Wavefront OBJ files into vertex arrays",
-      "importance": "utility",
-      "pattern": "file_parser",
-      "features": ["triangulation", "uv_flipping_option"]
+      "purity": "impure",
+      "guarantees": [
+        "Must always return triangulated vertices",
+        "vt and vn indices must be resolved safely even when missing",
+        "OBJ parsing must not crash on malformed lines"
+      ]
     },
-    
-    "main": {
-      "role": "demo_application",
-      "purpose": "Example usage showing Earth-Moon rotation",
-      "importance": "example_only",
-      "pattern": "demonstration"
-    },
-    
-    "conf": {
-      "role": "engine_config",
-      "purpose": "LÖVE engine configuration",
-      "importance": "boilerplate",
-      "pattern": "configuration"
+
+    "g3d.init": {
+      "purity": "impure",
+      "side_effects": ["global shader load", "love.graphics.setDepthMode"],
+      "guarantees": [
+        "g3d global must be removed and returned as module",
+        "Shader must compile successfully before engine is usable"
+      ]
     }
   },
-  
-  "key_technical_choices": {
-    "coordinate_system": "right_handed_z_up",
-    "matrix_layout": "row_major",
-    "vertex_format": "position_texcoord_normal_color",
-    "rendering_approach": "shader_based_software",
-    "collision_approach": "per_triangle_testing",
-    "memory_optimization": "optional_ffi_compression"
+
+  // ============================================================
+  //  DEPENDENCY CONSTRAINTS
+  // ============================================================
+  "dependency_constraints": {
+    "allowed_dependencies": {
+      "g3d.*": ["love.graphics", "love.data", "love.filesystem"],
+      "g3d.model": ["g3d.matrices", "g3d.objloader", "g3d.collisions", "g3d.camera"],
+      "g3d.camera": ["g3d.matrices"],
+      "g3d.collisions": ["g3d.vectors"],
+      "g3d.vectors": []
+    },
+
+    "forbidden_dependencies": {
+      "all_modules": [
+        "io.*",
+        "os.execute",
+        "debug.*",
+        "package.loaders",
+        "shared mutable globals"
+      ],
+      "g3d.matrices": ["love.*"],
+      "g3d.vectors": ["love.*"],
+      "g3d.collisions": ["love.*"]
+    },
+
+    "dependency_stability": {
+      "frozen": [
+        "g3d.model.vertexFormat",
+        "Matrix representation",
+        "Camera view/projection uniform names"
+      ],
+      "stable": [
+        "OBJ loader behavior",
+        "Collision semantics",
+        "Camera movement API"
+      ]
+    }
   },
-  
-  "reasoning_hints": {
-    "for_understanding": "Start with vectors.lua → matrices.lua → model.lua",
-    "for_modification": "Shader is in separate .vert file not included in bundle",
-    "for_extending": "Add new collision types in collisions.lua pattern",
-    "performance_tips": "Use model:compress() for production, it reduces memory 90%",
-    "common_pitfalls": "Z-up coordinate system, watch out for matrix multiplication order"
+
+  // ============================================================
+  //  SAFETY + PERFORMANCE CONSTRAINTS
+  // ============================================================
+  "safety_constraints": {
+    "memory": [
+      "Meshes must be released before reassignment when compress() is called",
+      "compress() must destroy verts array after converting to FFI memory",
+      "OBJ loader must not leave open file handles"
+    ],
+    "performance": {
+      "rules": [
+        "No table-based vectors inside hot loops",
+        "Collision loops must minimize Lua→C boundary calls",
+        "Matrix operations must avoid allocating new tables"
+      ]
+    }
   },
-  
-  "external_context": {
-    "depends_on": ["LÖVE2D", "OpenGL_shaders"],
-    "similar_to": ["raylib_3d", "three.js_conceptually"],
-    "file_missing": "g3d.vert (shader file) - critical for actual rendering"
+
+  // ============================================================
+  //  BEHAVIORAL CONTRACTS
+  // ============================================================
+  "behavioral_contracts": {
+    "coordinate_system": "Right-handed (Z-up)",
+    "rotation_model": ["Euler XYZ (3-element)", "Quaternion (4-element)"],
+    "camera_model": {
+      "view": "Look-at matrix from eye→target",
+      "projection": "OpenGL-style perspective or orthographic"
+    },
+    "rendering": {
+      "shader_uniforms": ["modelMatrix", "viewMatrix", "projectionMatrix"],
+      "depth_mode": "lequal",
+      "alpha_mode": "default"
+    }
   },
-  
-  "code_quality_indicators": {
-    "documentation": "good_comments",
-    "error_handling": "basic",
-    "testing": "none_visible",
-    "modularity": "high",
-    "api_design": "consistent"
+
+  // ============================================================
+  //  TRANSLATION CONSTRAINTS (IF PORTED TO C / TS / Python)
+  // ============================================================
+  "translation_constraints": {
+    "cross_language": {
+      "matrix_representation": "must remain 16-number float array",
+      "vector_representation": "must remain triple of numbers",
+      "transform_semantics": "scale→rotation→translation order must be preserved",
+      "collision_accuracy": "epsilon thresholds must remain equivalent"
+    }
   },
-  
-  "learning_path": [
-    "1. Understand the vector math in vectors.lua",
-    "2. See how matrices build transforms in matrices.lua", 
-    "3. Follow how model combines matrices and meshes",
-    "4. Look at camera for view/projection setup",
-    "5. Study collisions for advanced usage examples"
+
+  // ============================================================
+  //  SEMANTIC TESTS
+  // ============================================================
+  "semantic_tests": [
+    {
+      "name": "model_rotation_quaternion",
+      "input": {"rotation": [0, 0, 0, 1]},
+      "expected": "identity rotation matrix",
+      "purpose": "verify quaternion → matrix correctness"
+    },
+    {
+      "name": "camera_lookAt_alignment",
+      "input": {"eye": [0,0,0], "target": [1,0,0]},
+      "expected": "viewMatrix forward vector = normalized(target-eye)",
+      "purpose": "ensure camera forward vector matches geometric expectation"
+    },
+    {
+      "name": "collision_ray_hit",
+      "input": "ray intersects triangle",
+      "expected": "returns minimum positive t",
+      "purpose": "verify ray intersection correctness"
+    }
   ],
-  
-  "estimated_token_savings": "70-80% less reading needed",
-  "primary_use_cases": ["learning_3d", "simple_3d_games", "educational_demos"],
-  "not_suited_for": ["aaa_games", "complex_shading", "vr_applications"]
+
+  // ============================================================
+  //  EVOLUTION CONSTRAINTS
+  // ============================================================
+  "evolution": {
+    "frozen_apis": [
+      "model:draw()",
+      "matrix:setTransformationMatrix()",
+      "camera.lookAt",
+      "OBJ loader result schema"
+    ],
+    "extensible_points": [
+      "collision primitives (box, plane, cylinder)",
+      "camera modes (orbit, trackball)",
+      "material/shader extensions"
+    ]
+  }
 }
+

@@ -1,0 +1,235 @@
+# ======================================================================
+# CALYX BUNDLE - LLM OPTIMIZED FORMAT
+# ======================================================================
+
+CALYX_METADATA = {
+  "format_version": "calyx-1.0",
+  "total_modules": 2,
+  "layers": {
+    "UTILITY": 2
+  },
+  "external_deps": [
+    "argparse",
+    "json",
+    "yajph.cli.main",
+    "yajph.io.loaders"
+  ],
+  "generated_at": "2026-01-16T22:34:27.893393Z"
+}
+
+# ======================================================================
+# MODULE MAP (name → path, layer)
+# ======================================================================
+MODULE_MAP = {
+    "main": {
+        "path": "main.py",
+        "layer": "UTILITY",
+        "exports": ["main"]
+    },
+    "__init__": {
+        "path": "__init__.py",
+        "layer": "UTILITY",
+        "exports": ["__all__"]
+    },
+}
+
+# ======================================================================
+# DEPENDENCY GRAPH (module → [dependencies])
+# ======================================================================
+DEPENDENCY_GRAPH = {
+    "main": [],
+    "__init__": [],
+}
+
+# ======================================================================
+# MODULE CONTENTS (PRESERVED EXACTLY)
+# ======================================================================
+MODULE_CONTENTS = {
+    # ------------------------------------------------------------
+    # MODULE: main
+    # LAYER: UTILITY
+    # PATH: main.py
+    # ------------------------------------------------------------
+    "main": """
+\"\"\"
+Command-line interface entry point.
+
+I/O Boundary: This module handles all CLI interaction.
+No business logic - only argument parsing and output formatting.
+\"\"\"
+
+import json
+import argparse
+from yajph.io.loaders import evaluate_yaml
+
+
+def main() -> None:
+    \"\"\"
+    Simple CLI for testing and quick evaluations.
+    
+    I/O Boundary: This function handles all CLI interaction.
+    All business logic is delegated to core modules.
+    
+    Example usage:
+        $ yajph --rules rules.yaml --input application.json
+        $ yajph --rules rules.yaml --input app.json --output result.json --verbose
+    \"\"\"
+    parser = argparse.ArgumentParser(
+        description="YAJPH: The Anti-Black-Box Engine",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=\"\"\"
+Examples:
+  yajph --rules loan_rules.yaml --input applicant.json
+  yajph --rules hiring.yaml --input candidate.yaml --verbose
+  yajph --rules rules.yaml --input data.json --output decision.json
+
+Every "no" comes with a roadmap to "yes".
+        \"\"\"
+    )
+    
+    parser.add_argument(
+        '--rules',
+        required=True,
+        help='YAML rules file defining requirements'
+    )
+    parser.add_argument(
+        '--input',
+        required=True,
+        help='Input data file (YAML or JSON)'
+    )
+    parser.add_argument(
+        '--output',
+        help='Output JSON file (optional, prints to stdout if not specified)'
+    )
+    parser.add_argument(
+        '--verbose',
+        action='store_true',
+        help='Show detailed audit trail'
+    )
+    parser.add_argument(
+        '--pretty',
+        action='store_true',
+        default=True,
+        help='Pretty-print JSON output (default: True)'
+    )
+    
+    args = parser.parse_args()
+    
+    # Delegate to I/O layer
+    result = evaluate_yaml(args.rules, args.input)
+    
+    # Filter audit trail unless verbose
+    if not args.verbose:
+        result.pop('audit_trail', None)
+    
+    # Format output
+    indent = 2 if args.pretty else None
+    output_json = json.dumps(result, indent=indent)
+    
+    # Write to file or stdout
+    if args.output:
+        with open(args.output, 'w') as f:
+            f.write(output_json)
+        print(f"✓ Decision written to {args.output}")
+    else:
+        print(output_json)
+
+
+if __name__ == "__main__":
+    main()
+
+
+""",
+
+    # ------------------------------------------------------------
+    # MODULE: __init__
+    # LAYER: UTILITY
+    # PATH: __init__.py
+    # ------------------------------------------------------------
+    "__init__": """
+\"\"\"
+Command-line interface module.
+\"\"\"
+
+from yajph.cli.main import main
+
+__all__ = ['main']
+
+
+""",
+
+}
+
+# ======================================================================
+# PUBLIC API (what to expose)
+# ======================================================================
+
+from typing import List
+
+def get_module(name: str) -> str:
+    """Retrieve module source by name"""
+    return MODULE_CONTENTS.get(name, "")
+
+def list_modules(layer: str = None) -> List[str]:
+    """List modules, optionally filtered by layer"""
+    if layer:
+        return [name for name, meta in MODULE_MAP.items() if meta['layer'] == layer]
+    return list(MODULE_CONTENTS.keys())
+
+def get_dependencies(name: str) -> List[str]:
+    """Get module dependencies"""
+    return DEPENDENCY_GRAPH.get(name, [])
+
+def get_layer_stats() -> dict:
+    """Get statistics by layer"""
+    return CALYX_METADATA['layers']
+
+def get_external_deps() -> List[str]:
+    """Get external dependencies"""
+    return CALYX_METADATA['external_deps']
+
+# ======================================================================
+# RUNTIME SHIM (for execution)
+# ======================================================================
+import sys
+from types import ModuleType
+
+def _calyx_import_shim():
+    """Register modules in sys.modules"""
+    # Only create packages that exist in our bundle
+    packages = set(name.split('.')[0] for name in MODULE_CONTENTS)
+    
+    for pkg in packages:
+        # Create package
+        pkg_name = f"{__name__}.{pkg}"
+        pkg_mod = ModuleType(pkg_name)
+        sys.modules[pkg_name] = pkg_mod
+        
+        # Add submodules that belong to this package
+        for full_name in MODULE_CONTENTS:
+            if full_name.startswith(pkg + '.'):
+                sub_name = full_name[len(pkg)+1:]
+                sub_full = f"{pkg_name}.{sub_name}"
+                sub_mod = ModuleType(sub_full)
+                
+                # Execute the module code in its namespace
+                exec(MODULE_CONTENTS[full_name], sub_mod.__dict__)
+                sys.modules[sub_full] = sub_mod
+                setattr(pkg_mod, sub_name, sub_mod)
+
+# Auto-register on import
+_calyx_import_shim()
+
+# ======================================================================
+# MAIN ENTRY POINT (if run as script)
+# ======================================================================
+if __name__ == '__main__':
+    print("CALYX Bundle Loaded")
+    print(f"Modules: {len(MODULE_CONTENTS)}")
+    print(f"Layers: {CALYX_METADATA["layers"]}")
+    print("\nAvailable commands:")
+    print("  - get_module(name)")
+    print("  - list_modules(layer=None)")
+    print("  - get_dependencies(name)")
+    print("  - get_layer_stats()")
+    print("  - get_external_deps()")
